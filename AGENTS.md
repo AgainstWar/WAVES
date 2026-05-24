@@ -72,10 +72,41 @@ python tests/test_smoke.py    # Run verification
 waves                          # Start stdio MCP server
 ```
 
+## ICARUS VERILOG COMPATIBILITY
+
+Tested with Icarus Verilog generated VCD files (`sample/sample.vcd`):
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| `$dumpall` | Supported | Outputs parameter initial values before `$dumpvars` |
+| `$dumpoff` / `$dumpon` | Ignored | Safe to skip for query-only use |
+| Multi-scope shared identifiers | Supported | Same identifier reused across scopes (e.g. `clk` in `tb`, `dut`, `u_fsm_ctrl`) |
+| Multi-char identifiers | Supported | Icarus uses `]"`, `"` etc. when signal count > 94 |
+| Short vector values | Supported | Values shorter than signal width (e.g. `b0 ]"` for width-10 signal) |
+| `$parameter` type | Supported | Treated same as `wire`/`reg` for signal listing |
+
+## DEBUGGING WITH MCP INSPECTOR
+
+```bash
+# UI mode
+npx @modelcontextprotocol/inspector waves
+
+# CLI mode examples
+npx @modelcontextprotocol/inspector --cli waves --method tools/list
+npx @modelcontextprotocol/inspector --cli waves --method tools/call \
+  --tool-name wave_list_signals \
+  --tool-arg vcd_path=sample/sample.vcd
+npx @modelcontextprotocol/inspector --cli waves --method tools/call \
+  --tool-name wave_get_value \
+  --tool-arg vcd_path=sample/sample.vcd \
+  --tool-arg signal=tb_pmic_fsm.clk \
+  --tool-arg time=100000
+```
+
 ## NOTES
 
 - Fixture contract: `tests/fixtures/simple.vcd` must contain `top.clk`, `top.reset`, `top.dut.out` with exact transitions
 - `WavesVCDError` / `WavesQueryError` are the only domain exceptions; server converts to MCP `ToolError`
 - `.sisyphus/` contains planning artifacts and evidence (not shipped)
-- No `.gitignore` present; `__pycache__/` and `.egg-info/` are tracked
+- `.gitignore` excludes `__pycache__/` and `.egg-info/`
 - Tests use script-style assertions, not pytest

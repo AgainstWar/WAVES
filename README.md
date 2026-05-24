@@ -1,96 +1,296 @@
-# WAVES
+# WAVES — VCD 波形查询 MCP 服务器
 
-WAVES is a local, stdio-only MCP tool for querying VCD waveforms.
+**WAVES**（Waveform Access via Explicit Signals）是一个基于 [Model Context Protocol (MCP)](https://modelcontextprotocol.io) 的本地 stdio 工具，用于查询 VCD（Value Change Dump）波形文件中的信号值和时序变化。
 
-## Install
+> 🔧 **当前版本**：v1.0 — 支持信号列表、点值查询和变化记录查询
+
+---
+
+## 功能概述
+
+WAVES 将 VCD 波形文件封装为 MCP 工具集，让 LLM 客户端（如 Claude、Cursor、OpenCode）能够通过标准协议直接读取仿真波形数据，无需手动解析文件或编写脚本。
+
+### 提供的 MCP 工具
+
+| 工具名 | 功能 | 输入参数 | 返回 |
+|--------|------|----------|------|
+| `wave_list_signals` | 列出 VCD 中所有信号 | `vcd_path`, `filter?`, `limit?` | 信号名列表、位宽、是否截断 |
+| `wave_get_value` | 查询信号在指定时间的值 | `vcd_path`, `signal`, `time` | 信号值（at-or-before 语义） |
+| `wave_get_transitions` | 查询信号在时间段内的变化 | `vcd_path`, `signal`, `start_time`, `end_time`, `limit?` | 变化记录列表 |
+
+### 核心特性
+
+- **纯本地 stdio**：无 HTTP 服务、无网络端口、无持久状态
+- **零配置**：安装后直接运行 `waves` 命令即可接入 MCP 客户端
+- **Icarus Verilog 兼容**：完整支持 Icarus 生成的 VCD 文件（含 `$dumpall`、多字符标识符、跨 scope 共享信号等）
+- **轻量依赖**：仅依赖官方 `mcp` Python SDK
+
+---
+
+## 安装
+
+### 方式一：直接安装（推荐）
 
 ```bash
+git clone https://github.com/AgainstWar/WAVES.git
+cd WAVES
 pip install .
 ```
 
-Development editable install:
+### 方式二：开发模式（可编辑安装）
 
 ```bash
-python -m pip install -e .
+git clone https://github.com/AgainstWar/WAVES.git
+cd WAVES
+python -m pip install -e ".[dev]"
 ```
 
-## Runtime model
+> 开发模式会安装 `pytest` 等可选依赖，方便本地测试。
 
-- Local stdio only
-- No HTTP transport
-- No network ports
-- Uses the upstream official `mcp` Python SDK as a dependency
+### 验证安装
 
-## CLI
+```bash
+waves --help        # 查看帮助
+python tests/test_smoke.py  # 运行冒烟测试
+```
 
-After install, run:
+---
+
+## 快速使用
+
+### 1. 独立运行 MCP 服务器
 
 ```bash
 waves
 ```
 
-## v1 tools
+服务器通过标准输入输出（stdio）与 MCP 客户端通信。
 
-WAVES v1 exposes three tools:
+### 2. 接入 MCP 客户端
 
-- `wave_list_signals`
-- `wave_get_value`
-- `wave_get_transitions`
+#### OpenCode
 
-These tools are intentionally narrow and only cover VCD queries.
+在 `~/.config/opencode/opencode.json` 中添加：
 
-## Development
+```json
+{
+  "mcp": {
+    "waves": {
+      "type": "local",
+      "command": ["/usr/local/bin/waves"],
+      "enabled": true
+    }
+  }
+}
+```
 
-### Testing
+> 请将路径替换为你本地的 `waves` 安装路径（可通过 `which waves` 查询）。
 
-Run the minimal smoke test:
+#### Claude Desktop
+
+编辑 `~/Library/Application Support/Claude/claude_desktop_config.json`（macOS）或对应配置：
+
+```json
+{
+  "mcpServers": {
+    "waves": {
+      "command": "/usr/local/bin/waves",
+      "args": []
+    }
+  }
+}
+```
+
+#### Cursor
+
+编辑 `~/.cursor/mcp.json`：
+
+```json
+{
+  "mcpServers": {
+    "waves": {
+      "command": "/usr/local/bin/waves"
+    }
+  }
+}
+```
+
+---
+
+## 使用示例
+
+假设你有一个 Icarus Verilog 生成的 VCD 文件 `fsm_norm.vcd`，以下是各工具的调用示例。
+
+### 列出所有信号
+
+```json
+{
+  "vcd_path": "/path/to/fsm_norm.vcd",
+  "limit": 50
+}
+```
+
+返回：
+
+```json
+{
+  "vcd_path": "/path/to/fsm_norm.vcd",
+  "timescale": "1ps",
+  "signal_count": 251,
+  "signals": [
+    {"name": "tb_pmic_fsm.clk", "width": 1},
+    {"name": "tb_pmic_fsm.rst_n", "width": 1},
+    {"name": "tb_pmic_fsm.current_state [3:0]", "width": 4}
+  ],
+  "truncated": true
+}
+```
+
+### 查询信号在指定时间的值
+
+```json
+{
+  "vcd_path": "/path/to/fsm_norm.vcd",
+  "signal": "tb_pmic_fsm.clk",
+  "time": 100000
+}
+```
+
+返回：
+
+```json
+{
+  "signal": "tb_pmic_fsm.clk",
+  "time": 100000,
+  "value": "0"
+}
+```
+
+> **at-or-before 语义**：如果 `time=100000` 恰好没有变化记录，则返回最近一次变化（`time <= 100000`）的值。
+
+### 查询信号在时间段内的变化
+
+```json
+{
+  "vcd_path": "/path/to/fsm_norm.vcd",
+  "signal": "tb_pmic_fsm.clk",
+  "start_time": 0,
+  "end_time": 200000,
+  "limit": 20
+}
+```
+
+返回：
+
+```json
+{
+  "signal": "tb_pmic_fsm.clk",
+  "start_time": 0,
+  "end_time": 200000,
+  "transitions": [
+    {"time": 0, "value": "0"},
+    {"time": 10000, "value": "1"},
+    {"time": 20000, "value": "0"},
+    ...
+  ],
+  "truncated": false
+}
+```
+
+---
+
+## 调试与开发
+
+### 冒烟测试
 
 ```bash
 python tests/test_smoke.py
+# 预期输出：SMOKE_OK
 ```
 
-Install with dev dependencies:
+### 使用 MCP Inspector 调试
+
+[MCP Inspector](https://github.com/modelcontextprotocol/inspector) 是官方提供的可视化调试工具，支持交互式查看工具列表、测试调用和查看请求历史。
+
+**安装要求**：Node.js ^22.7.5
+
+**UI 模式**（自动打开浏览器）：
 
 ```bash
-python -m pip install -e ".[dev]"
-```
-
-### Debugging with MCP Inspector
-
-Use the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) to interactively test and debug WAVES:
-
-```bash
-# Install Inspector (requires Node.js ^22.7.5)
-npm install -g @modelcontextprotocol/inspector
-
-# Launch Inspector with WAVES
 npx @modelcontextprotocol/inspector waves
 ```
 
-The Inspector UI will open at `http://localhost:6274`. You can:
-- Browse available tools (`wave_list_signals`, `wave_get_value`, `wave_get_transitions`)
-- Test tool calls with the fixture VCD at `tests/fixtures/simple.vcd`
-- View request/response history and errors
+访问 `http://localhost:6274` 即可交互式调试。
 
-CLI mode (no UI):
+**CLI 模式**（命令行）：
 
 ```bash
-# List tools
+# 列出工具
 npx @modelcontextprotocol/inspector --cli waves --method tools/list
 
-# Call wave_list_signals
+# 调用 wave_list_signals
 npx @modelcontextprotocol/inspector --cli waves --method tools/call \
   --tool-name wave_list_signals \
-  --tool-arg vcd_path=tests/fixtures/simple.vcd
+  --tool-arg vcd_path=sample/sample.vcd
+
+# 调用 wave_get_value
+npx @modelcontextprotocol/inspector --cli waves --method tools/call \
+  --tool-name wave_get_value \
+  --tool-arg vcd_path=sample/sample.vcd \
+  --tool-arg signal=tb_pmic_fsm.clk \
+  --tool-arg time=100000
+
+# 调用 wave_get_transitions
+npx @modelcontextprotocol/inspector --cli waves --method tools/call \
+  --tool-name wave_get_transitions \
+  --tool-arg vcd_path=sample/sample.vcd \
+  --tool-arg signal=tb_pmic_fsm.clk \
+  --tool-arg start_time=0 \
+  --tool-arg end_time=200000
 ```
 
-## v1 non-goals
+---
 
-WAVES v1 does not:
+## Icarus Verilog 兼容性
 
-- run simulations
-- generate VCD files
-- support HTTP
-- support non-VCD waveform formats
-- infer bugs or generate fixes
-- maintain server-side project state
+WAVES 已针对 Icarus Verilog 生成的 VCD 文件进行兼容性测试：
+
+| 特性 | 支持状态 | 说明 |
+|------|----------|------|
+| `$dumpall` | ✅ 支持 | Icarus 在 `$dumpvars` 前输出参数初始值 |
+| `$dumpoff` / `$dumpon` | ✅ 忽略 | 查询工具无需追踪 dump 状态 |
+| 多 scope 共享标识符 | ✅ 支持 | 同一标识符在不同模块复用（如 `clk`） |
+| 多字符标识符 | ✅ 支持 | 信号数 >94 时自动生成（如 `]"`、`A"`） |
+| 短 vector 值 | ✅ 支持 | 值长度可小于信号位宽（VCD 隐式扩展） |
+| `$parameter` 类型 | ✅ 支持 | 按 `wire`/`reg` 处理，可正常列出和查询 |
+
+> 示例文件：`sample/sample.vcd`（251 信号，时间范围 0 ~ 1,361,000 ps）
+
+---
+
+## v1 非目标
+
+WAVES v1 **不**提供以下功能：
+
+- ❌ 运行仿真或生成 VCD 文件
+- ❌ 支持非 VCD 格式（FST、VPD、FSDB 等）
+- ❌ HTTP / SSE / 其他网络传输
+- ❌ 自动诊断 bug 或生成修复建议
+- ❌ RTL / Chisel / FIRRTL 源码映射
+- ❌ 自然语言波形摘要
+- ❌ 服务端持久状态或会话缓存
+
+---
+
+## 技术栈
+
+- **语言**：Python 3.10+
+- **MCP SDK**：官方 `mcp` Python 包
+- **传输**：stdio（标准输入输出）
+- **布局**：src-layout（`src/waves/`）
+
+---
+
+## 许可证
+
+MIT

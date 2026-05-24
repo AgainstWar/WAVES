@@ -1,1 +1,0 @@
-Verified unknown-signal failure assertion present in tests/test_smoke.py

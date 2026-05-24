@@ -1,2 +1,0 @@
-WavesVCDError
-VCD file not found: /tmp/does-not-exist.vcd

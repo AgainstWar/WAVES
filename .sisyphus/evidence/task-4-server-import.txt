@@ -1,2 +1,0 @@
-python -c "from waves.server import mcp, main; assert callable(main)"
-exit 0

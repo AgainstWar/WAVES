@@ -1,2 +1,0 @@
-wave_get_value raised mcp.server.fastmcp.exceptions.ToolError for missing signal, not WavesQueryError
-exit 0

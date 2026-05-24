@@ -35,7 +35,7 @@ def parse_vcd(path: str | Path) -> ParsedVCD:
 
     timescale: str | None = None
     scope_stack: list[str] = []
-    signal_by_id: dict[str, SignalInfo] = {}
+    signal_by_id: dict[str, list[SignalInfo]] = {}
     signals: dict[str, SignalInfo] = {}
     current_time = 0
     saw_enddefinitions = False
@@ -96,7 +96,7 @@ def parse_vcd(path: str | Path) -> ParsedVCD:
                 raise malformed(f"duplicate signal name: {hierarchical_name}")
 
             signal = SignalInfo(identifier=identifier, width=width)
-            signal_by_id[identifier] = signal
+            signal_by_id.setdefault(identifier, []).append(signal)
             signals[hierarchical_name] = signal
             return
 
@@ -112,17 +112,21 @@ def parse_vcd(path: str | Path) -> ParsedVCD:
         raise WavesVCDError(f"Unsupported VCD construct: {keyword}")
 
     def record_value_change(identifier: str, value: str) -> None:
-        signal = signal_by_id.get(identifier)
-        if signal is None:
+        signal_list = signal_by_id.get(identifier)
+        if not signal_list:
             raise malformed(f"value change for unknown identifier: {identifier}")
         normalized = value.lower()
         if any(bit not in {"0", "1", "x", "z"} for bit in normalized):
             raise malformed(f"unsupported value bits: {value}")
-        if len(normalized) != signal.width:
+        # VCD allows values shorter than signal width (implicit zero/sign extension)
+        # Only reject if value is wider than declared signal width
+        max_width = max(s.width for s in signal_list)
+        if len(normalized) > max_width:
             raise malformed(
-                f"value width mismatch for {identifier}: expected {signal.width}, got {len(normalized)}"
+                f"value width mismatch for {identifier}: expected max {max_width}, got {len(normalized)}"
             )
-        signal.transitions.append((current_time, normalized))
+        for signal in signal_list:
+            signal.transitions.append((current_time, normalized))
 
     def process_value_change(line: str) -> None:
         if line.startswith("b"):

@@ -1,0 +1,2 @@
+timescale: 1ns
+signals: [('top.clk', 1), ('top.dut.out', 8), ('top.reset', 1)]

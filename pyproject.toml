@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "waves"
+version = "0.1.0"
+description = "WAVES v1: local stdio MCP tool for VCD waveform queries"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "mcp",
+]
+
+[project.scripts]
+waves = "waves.server:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

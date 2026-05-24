@@ -1,0 +1,12 @@
+- WAVES v1 scaffolding uses a src-layout package with setuptools build metadata and a single console script entrypoint.
+- The official `mcp` package is treated strictly as an upstream dependency; no vendored SDK files are present in the repo.
+- Minimal placeholder modules are sufficient for import-time verification during the scaffold step.
+- The minimal WAVES VCD parser can stay line-oriented: command parsing for `$scope`/`$var`/`$enddefinitions`, a dedicated `$dumpvars` block handler, and simple scalar/vector value change parsing cover the v1 fixture contract.
+- Keeping signal state keyed by VCD identifier while exposing hierarchical names in the returned mapping cleanly separates parse-time value updates from user-facing signal lookup.
+- Query helpers should compute `signal_count` before applying `limit`, so truncation stays truthful while the returned list stays bounded.
+- `get_value` should return the most recent transition at or before the requested time; `None` only applies when no prior transition exists.
+- FastMCP's `ToolError` is available from `mcp.server.fastmcp.exceptions` in the installed SDK, and raising it from tool wrappers cleanly converts `WavesQueryError` into MCP-facing tool failures.
+- Calling `mcp.run()` with no arguments keeps WAVES on the default stdio transport, which matches the v1 no-network requirement.
+- A minimal stdlib smoke script can verify WAVES v1 imports plus list/value/transition query contracts directly via plain dict assertions and an unknown-signal WavesQueryError check.
+- Negative time validation belongs in the query layer so both direct callers and MCP tool wrappers share the same error behavior.
+- Removing `sys.path` manipulation from smoke tests is safe when the package is installed in editable mode.

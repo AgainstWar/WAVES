@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+src/waves/__init__.py
+src/waves/query.py
+src/waves/server.py
+src/waves/vcd_parser.py
+src/waves.egg-info/PKG-INFO
+src/waves.egg-info/SOURCES.txt
+src/waves.egg-info/dependency_links.txt
+src/waves.egg-info/entry_points.txt
+src/waves.egg-info/requires.txt
+src/waves.egg-info/top_level.txt
+tests/test_smoke.py

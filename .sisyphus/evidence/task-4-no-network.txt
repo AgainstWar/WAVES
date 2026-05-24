@@ -1,0 +1,2 @@
+python script asserted no streamable-http/sse/host=/port=/uvicorn strings in src/waves/server.py
+exit 0

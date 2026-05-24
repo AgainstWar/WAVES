@@ -1,0 +1,2 @@
+- Added explicit docstrings to query helpers and MCP tool wrappers to satisfy review feedback and make the narrow v1 API self-describing.
+- Enforced non-negative time arguments in `get_value` and `get_transitions` at the query layer to keep validation centralized.

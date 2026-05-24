@@ -12,6 +12,11 @@ dependencies = [
   "mcp",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "pytest",
+]
+
 [project.scripts]
 waves = "waves.server:main"
 

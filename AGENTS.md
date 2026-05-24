@@ -1,0 +1,81 @@
+# WAVES Knowledge Base
+
+**Generated:** 2026-05-24
+**Commit:** 91c421b
+**Branch:** master
+
+## OVERVIEW
+
+WAVES (Waveform Access via Explicit Signals) is a local stdio MCP server for querying VCD waveform files. Built with Python 3.10+ and the official MCP Python SDK.
+
+## STRUCTURE
+
+```
+waves/
+├── pyproject.toml          # Package config, mcp dependency, waves console entry
+├── README.md               # Install, tools, non-goals
+├── src/waves/
+│   ├── __init__.py
+│   ├── vcd_parser.py       # Minimal VCD parser (scalar + vector)
+│   ├── query.py            # Signal lookup, value, transitions
+│   └── server.py           # FastMCP stdio server, 3 tools
+├── tests/
+│   ├── fixtures/simple.vcd # Test waveform fixture
+│   └── test_smoke.py       # Minimal executable verification
+```
+
+## WHERE TO LOOK
+
+| Task | Location | Notes |
+|------|----------|-------|
+| Add VCD format support | `src/waves/vcd_parser.py` | Only scalar/vector now |
+| Add query logic | `src/waves/query.py` | filter, limit, range, truncation |
+| Add MCP tools | `src/waves/server.py` | 3 tool decorators |
+| Fix install/runtime | `pyproject.toml` | entrypoint: `waves = waves.server:main` |
+
+## CODE MAP
+
+| Symbol | Type | Location | Role |
+|--------|------|----------|------|
+| `parse_vcd` | function | `vcd_parser.py:24` | Entry parser, returns `ParsedVCD` |
+| `list_signals` | function | `query.py:24` | Filtered signal listing |
+| `get_value` | function | `query.py:57` | At-or-before value lookup |
+| `get_transitions` | function | `query.py:84` | Inclusive range transitions |
+| `wave_list_signals` | MCP tool | `server.py:17` | Delegates to `list_signals` |
+| `wave_get_value` | MCP tool | `server.py:26` | Delegates to `get_value` |
+| `wave_get_transitions` | MCP tool | `server.py:35` | Delegates to `get_transitions` |
+| `main` | function | `server.py:55` | Calls `mcp.run()` (stdio) |
+
+## CONVENTIONS
+
+- **src-layout**: `src/waves/` not `./waves/`
+- **Timescale**: parsed as metadata only; all time inputs/outputs are raw VCD integer timestamps
+- **Value format**: scalars `"0"/"1"/"x"/"z"`; vectors lowercase bit string without `b` prefix
+- **Missing value**: returns `null` (Python `None`) — never invent values
+- **Signal matching**: exact hierarchical name only; no fuzzy/suffix/regex
+
+## ANTI-PATTERNS (THIS PROJECT)
+
+- Never add HTTP/SSE/transportable-http; stdio only
+- Never vendor or modify upstream `mcp` SDK
+- Never add simulation execution or VCD generation
+- Never add RTL/Chisel/FIRRTL mapping
+- Never add natural-language summaries or debug conclusions
+- Never add persistent session state or caching
+- Never expand test framework beyond minimal smoke
+
+## COMMANDS
+
+```bash
+python -m pip install -e .     # Editable install
+python tests/test_smoke.py    # Run verification
+waves                          # Start stdio MCP server
+```
+
+## NOTES
+
+- Fixture contract: `tests/fixtures/simple.vcd` must contain `top.clk`, `top.reset`, `top.dut.out` with exact transitions
+- `WavesVCDError` / `WavesQueryError` are the only domain exceptions; server converts to MCP `ToolError`
+- `.sisyphus/` contains planning artifacts and evidence (not shipped)
+- No `.gitignore` present; `__pycache__/` and `.egg-info/` are tracked
+- Tests use script-style assertions, not pytest

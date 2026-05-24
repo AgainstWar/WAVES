@@ -163,12 +163,16 @@ def parse_vcd(path: str | Path) -> ParsedVCD:
             continue
 
         if line.startswith("$"):
-            if line.startswith("$dumpvars"):
+            if line.startswith("$dumpvars") or line == "$dumpall":
                 if not saw_enddefinitions:
-                    raise malformed("$dumpvars before $enddefinitions")
-                if line != "$dumpvars":
+                    raise malformed("dump section before $enddefinitions")
+                if line.startswith("$dumpvars") and line != "$dumpvars":
                     raise WavesVCDError("Unsupported VCD construct: inline $dumpvars")
                 in_dumpvars = True
+                continue
+
+            if line in {"$dumpoff", "$dumpon"}:
+                # These commands are safe to ignore for query-only purposes
                 continue
 
             if "$end" in line:

@@ -94,8 +94,6 @@ def parse_vcd(path: str | Path) -> ParsedVCD:
             hierarchical_name = ".".join([*scope_stack, reference])
             if hierarchical_name in signals:
                 raise malformed(f"duplicate signal name: {hierarchical_name}")
-            if identifier in signal_by_id:
-                raise malformed(f"duplicate signal identifier: {identifier}")
 
             signal = SignalInfo(identifier=identifier, width=width)
             signal_by_id[identifier] = signal

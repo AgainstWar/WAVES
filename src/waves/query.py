@@ -11,30 +11,27 @@ def _load_vcd(vcd_path: str) -> ParsedVCD:
     try:
         return parse_vcd(vcd_path)
     except WavesVCDError as exc:
-        raise WavesQueryError(str(exc)) from exc
+        raise WavesQueryError(
+            f"VCD file error: {vcd_path}. Reason: {exc}. Please provide a valid VCD file."
+        ) from exc
 
 
 def _get_signal(parsed: ParsedVCD, signal: str) -> SignalInfo:
     info = parsed.signals.get(signal)
     if info is None:
-        raise WavesQueryError(f"Signal not found: {signal}")
+        raise WavesQueryError(
+            f"Signal error: signal not found: {signal}. Please provide a valid signal name."
+        )
     return info
 
 
 def list_signals(vcd_path: str, filter: str | None = None, limit: int = 100) -> dict[str, object]:
-    """List signals from a VCD file.
+    """List queryable signals in a VCD file.
 
-    Args:
-        vcd_path: Path to the VCD file.
-        filter: Optional substring used to match signal names.
-        limit: Maximum number of signals to return.
-
-    Returns:
-        A dictionary containing the VCD path, timescale, signal count,
-        signal summaries, and whether results were truncated.
+    Use this to find exact hierarchical signal names before querying values or transitions.
     """
     if limit <= 0:
-        raise WavesQueryError("limit must be greater than 0")
+        raise WavesQueryError(f"Parameter error: limit must be greater than 0, got {limit}.")
 
     parsed = _load_vcd(vcd_path)
     matching_signals = [
@@ -55,18 +52,12 @@ def list_signals(vcd_path: str, filter: str | None = None, limit: int = 100) -> 
 
 
 def get_value(vcd_path: str, signal: str, time: int) -> dict[str, object]:
-    """Get the value of a signal at a specific time.
+    """Get one signal value at a raw VCD timestamp.
 
-    Args:
-        vcd_path: Path to the VCD file.
-        signal: Signal name to query.
-        time: Query time; must be non-negative.
-
-    Returns:
-        A dictionary containing the signal name, query time, and value.
+    The signal must exactly match a name returned by list_signals.
     """
     if time < 0:
-        raise WavesQueryError("time must be greater than or equal to 0")
+        raise WavesQueryError(f"Parameter error: time must be greater than or equal to 0, got {time}.")
 
     parsed = _load_vcd(vcd_path)
     info = _get_signal(parsed, signal)
@@ -88,27 +79,20 @@ def get_transitions(
     end_time: int,
     limit: int = 50,
 ) -> dict[str, object]:
-    """Get signal transitions within a time range.
+    """Get recorded signal transitions in an inclusive raw VCD time range.
 
-    Args:
-        vcd_path: Path to the VCD file.
-        signal: Signal name to query.
-        start_time: Inclusive range start; must be non-negative.
-        end_time: Inclusive range end; must be non-negative.
-        limit: Maximum number of transitions to return.
-
-    Returns:
-        A dictionary containing the signal name, requested time range,
-        transition list, and whether results were truncated.
+    Use limit to cap the number of returned transition records.
     """
     if limit <= 0:
-        raise WavesQueryError("limit must be greater than 0")
+        raise WavesQueryError(f"Parameter error: limit must be greater than 0, got {limit}.")
     if start_time < 0:
-        raise WavesQueryError("start_time must be greater than or equal to 0")
+        raise WavesQueryError(f"Parameter error: start_time must be greater than or equal to 0, got {start_time}.")
     if end_time < 0:
-        raise WavesQueryError("end_time must be greater than or equal to 0")
+        raise WavesQueryError(f"Parameter error: end_time must be greater than or equal to 0, got {end_time}.")
     if start_time > end_time:
-        raise WavesQueryError("start_time must be less than or equal to end_time")
+        raise WavesQueryError(
+            f"Parameter error: start_time must be less than or equal to end_time, got start_time={start_time}, end_time={end_time}."
+        )
 
     parsed = _load_vcd(vcd_path)
     info = _get_signal(parsed, signal)

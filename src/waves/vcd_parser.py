@@ -24,14 +24,14 @@ class ParsedVCD:
 def parse_vcd(path: str | Path) -> ParsedVCD:
     file_path = Path(path)
     if not file_path.exists():
-        raise WavesVCDError(f"VCD file not found: {file_path}")
+        raise WavesVCDError(f"file not found")
     if not file_path.is_file():
-        raise WavesVCDError(f"VCD path is not a file: {file_path}")
+        raise WavesVCDError(f"path is not a file")
 
     try:
         raw_lines = file_path.read_text(encoding="utf-8").splitlines()
     except OSError as exc:
-        raise WavesVCDError(f"Could not read VCD file: {file_path}") from exc
+        raise WavesVCDError(f"could not read file") from exc
 
     timescale: str | None = None
     scope_stack: list[str] = []
@@ -43,7 +43,7 @@ def parse_vcd(path: str | Path) -> ParsedVCD:
     command_buffer: list[str] = []
 
     def malformed(message: str) -> WavesVCDError:
-        return WavesVCDError(f"Malformed VCD: {message}")
+        return WavesVCDError(message)
 
     def process_command(command_text: str) -> None:
         nonlocal timescale, saw_enddefinitions
@@ -109,7 +109,7 @@ def parse_vcd(path: str | Path) -> ParsedVCD:
         if keyword in {"$comment", "$date", "$version"}:
             return
 
-        raise WavesVCDError(f"Unsupported VCD construct: {keyword}")
+        raise WavesVCDError(f"unsupported VCD construct: {keyword}")
 
     def record_value_change(identifier: str, value: str) -> None:
         signal_list = signal_by_id.get(identifier)
@@ -145,7 +145,7 @@ def parse_vcd(path: str | Path) -> ParsedVCD:
             record_value_change(identifier, prefix)
             return
 
-        raise WavesVCDError(f"Unsupported VCD value change: {line}")
+        raise WavesVCDError(f"unsupported VCD value change: {line}")
 
     for raw_line in raw_lines:
         line = raw_line.strip()
@@ -171,7 +171,7 @@ def parse_vcd(path: str | Path) -> ParsedVCD:
                 if not saw_enddefinitions:
                     raise malformed("dump section before $enddefinitions")
                 if line.startswith("$dumpvars") and line != "$dumpvars":
-                    raise WavesVCDError("Unsupported VCD construct: inline $dumpvars")
+                    raise WavesVCDError("unsupported VCD construct: inline $dumpvars")
                 in_dumpvars = True
                 continue
 

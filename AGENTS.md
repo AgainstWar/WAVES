@@ -54,6 +54,14 @@ waves/
 - **Missing value**: returns `null` (Python `None`) — never invent values
 - **Signal matching**: exact hierarchical name only; no fuzzy/suffix/regex
 
+## MCP DESCRIPTIONS
+
+When adding or editing `@mcp.tool()` functions:
+
+- **Tool description** goes in the **docstring** — this is sent to LLM clients via `tools/list`. Keep it concise (one sentence what it does, optionally one sentence how it relates to other tools). Do NOT include debugging strategies, RTL analysis workflows, or natural-language summaries.
+- **Parameter descriptions** go in **`Annotated[..., Field(description="...")]`** — these become JSON Schema `description` fields and are visible to LLM clients. Be explicit about units, constraints, and references to other tools (e.g. "Exact hierarchical signal name returned by wave_list_signals").
+- See existing tools in `src/waves/server.py` for the established pattern.
+
 ## ANTI-PATTERNS (THIS PROJECT)
 
 - Never add HTTP/SSE/transportable-http; stdio only

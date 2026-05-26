@@ -199,6 +199,22 @@ waves
 
 ---
 
+## Error Model
+
+WAVES returns errors in three stable categories. All messages are in English and describe only what input is unavailable — no RTL debugging advice, no waveform interpretation, and no repair suggestions.
+
+| Category | When | Format | Example |
+|----------|------|--------|---------|
+| **VCD file error** | `vcd_path` does not exist, is not a file, is unreadable, or is not a valid VCD | `VCD file error: <path>. Reason: <reason>.` | `VCD file error: /tmp/wave.vcd. Reason: file not found.` |
+| **Signal error** | `signal` does not match any full hierarchical name in the VCD | `Signal error: signal not found: <signal>.` | `Signal error: signal not found: tb.dut.clk.` |
+| **Parameter error** | `limit <= 0`, `time < 0`, `start_time < 0`, `end_time < 0`, or `start_time > end_time` | `Parameter error: <reason>.` | `Parameter error: limit must be greater than 0, got 0.` |
+
+Empty results are **not** errors:
+- `wave_get_transitions` returns `"transitions": []` when no value changes exist in the requested range.
+- `wave_get_value` returns `"value": null` when the signal has no recorded value at or before the requested time.
+
+---
+
 ## 调试与开发
 
 ### 冒烟测试

@@ -1,7 +1,9 @@
 """WAVES MCP server — stdio tool set for querying VCD waveform files.
 
-Exposes three MCP tools that delegate to the query layer. All descriptions
-and parameter docs are consumed by LLM clients via the MCP protocol.
+Exposes MCP tools that delegate to the query layer (waves.query).  All tool
+descriptions and parameter docs are consumed by LLM clients via the MCP
+protocol (tools/list).  Transport is stdio only; no HTTP, no SSE, no session
+state.
 """
 
 from __future__ import annotations
@@ -39,7 +41,6 @@ def wave_get_info(
         raise _tool_error(exc) from exc
 
 
-# MCP tool description: visible to LLM via tools/list
 @mcp.tool()
 def wave_list_signals(
     vcd_path: Annotated[str, Field(description="Explicit path to the VCD file.")],
@@ -59,7 +60,6 @@ def wave_list_signals(
         raise _tool_error(exc) from exc
 
 
-# MCP tool description: visible to LLM via tools/list
 @mcp.tool()
 def wave_get_value(
     vcd_path: Annotated[str, Field(description="Explicit path to the VCD file.")],
@@ -79,7 +79,6 @@ def wave_get_value(
         raise _tool_error(exc) from exc
 
 
-# MCP tool description: visible to LLM via tools/list
 @mcp.tool()
 def wave_get_transitions(
     vcd_path: Annotated[str, Field(description="Explicit path to the VCD file.")],

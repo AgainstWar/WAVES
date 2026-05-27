@@ -4,7 +4,7 @@ from typing import Any, cast
 
 import waves.query
 import waves.vcd_parser
-from waves.query import WavesQueryError, get_info, get_transitions, get_value, list_signals
+from waves.query import WavesQueryError, get_info, get_transitions, get_value, get_window, list_signals
 from waves.server import main, mcp
 
 
@@ -98,6 +98,62 @@ def main_smoke() -> None:
         pass
     else:
         raise AssertionError("expected WavesQueryError for unknown signal")
+
+    window = require_dict(
+        get_window(VCD_PATH, ["top.clk", "top.reset", "top.dut.out"], 0, 20, limit_per_signal=50),
+        "get_window must return a dict",
+    )
+    assert_equal(window["start_time"], 0, "window start_time mismatch")
+    assert_equal(window["end_time"], 20, "window end_time mismatch")
+    window_signals = window["signals"]
+    if not isinstance(window_signals, list):
+        raise AssertionError("window signals must be a list")
+    if len(window_signals) != 3:
+        raise AssertionError(f"window signals length mismatch: expected 3, got {len(window_signals)}")
+    assert_equal(window_signals[0]["signal"], "top.clk", "window signal[0] name mismatch")
+    assert_equal(window_signals[1]["signal"], "top.reset", "window signal[1] name mismatch")
+    assert_equal(window_signals[2]["signal"], "top.dut.out", "window signal[2] name mismatch")
+    if not isinstance(window_signals[0]["transitions"], list):
+        raise AssertionError("window signal transitions must be a list")
+    assert_equal(window_signals[0]["truncated"], False, "window truncated mismatch")
+
+    empty_window = require_dict(
+        get_window(VCD_PATH, ["top.dut.out"], 121, 121, limit_per_signal=50),
+        "get_window must return a dict",
+    )
+    empty_signals = empty_window["signals"]
+    if not isinstance(empty_signals, list) or len(empty_signals) != 1:
+        raise AssertionError("empty_window signals mismatch")
+    assert_equal(empty_signals[0]["transitions"], [], "empty_window transitions mismatch")
+    assert_equal(empty_signals[0]["truncated"], False, "empty_window truncated mismatch")
+
+    try:
+        get_window(VCD_PATH, [], 0, 100, limit_per_signal=50)
+    except WavesQueryError:
+        pass
+    else:
+        raise AssertionError("expected WavesQueryError for empty signals")
+
+    try:
+        get_window(VCD_PATH, ["top.clk"] * 21, 0, 100, limit_per_signal=50)
+    except WavesQueryError:
+        pass
+    else:
+        raise AssertionError("expected WavesQueryError for too many signals")
+
+    try:
+        get_window(VCD_PATH, ["top.clk"], 0, 100, limit_per_signal=0)
+    except WavesQueryError:
+        pass
+    else:
+        raise AssertionError("expected WavesQueryError for limit_per_signal=0")
+
+    try:
+        get_window(VCD_PATH, ["top.dut.missing"], 0, 100, limit_per_signal=50)
+    except WavesQueryError:
+        pass
+    else:
+        raise AssertionError("expected WavesQueryError for unknown signal in window")
 
     print("SMOKE_OK")
 

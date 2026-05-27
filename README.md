@@ -18,6 +18,7 @@ WAVES 将 VCD 波形文件封装为 MCP 工具集，让 LLM 客户端（如 Clau
 | `wave_list_signals` | 列出 VCD 中所有信号 | `vcd_path`, `filter?`, `limit?` | 信号名列表、位宽、是否截断 |
 | `wave_get_value` | 查询信号在指定时间的值 | `vcd_path`, `signal`, `time` | 信号值（at-or-before 语义） |
 | `wave_get_transitions` | 查询信号在时间段内的变化 | `vcd_path`, `signal`, `start_time`, `end_time`, `limit?` | 变化记录列表 |
+| `wave_get_window` | 查询多个信号在同一窗口内的变化 | `vcd_path`, `signals`, `start_time`, `end_time`, `limit_per_signal?` | 每个信号的变化记录列表 |
 
 ### 核心特性
 
@@ -220,6 +221,55 @@ waves
 }
 ```
 
+### 查询多个信号在同一窗口内的变化
+
+```json
+{
+  "vcd_path": "/path/to/fsm_norm.vcd",
+  "signals": [
+    "tb_pmic_fsm.clk",
+    "tb_pmic_fsm.rst_n",
+    "tb_pmic_fsm.current_state"
+  ],
+  "start_time": 100000,
+  "end_time": 160000,
+  "limit_per_signal": 50
+}
+```
+
+返回：
+
+```json
+{
+  "start_time": 100000,
+  "end_time": 160000,
+  "signals": [
+    {
+      "signal": "tb_pmic_fsm.clk",
+      "transitions": [
+        {"time": 100000, "value": "0"},
+        {"time": 110000, "value": "1"}
+      ],
+      "truncated": false
+    },
+    {
+      "signal": "tb_pmic_fsm.rst_n",
+      "transitions": [],
+      "truncated": false
+    },
+    {
+      "signal": "tb_pmic_fsm.current_state",
+      "transitions": [
+        {"time": 120000, "value": "0010"}
+      ],
+      "truncated": false
+    }
+  ]
+}
+```
+
+> `wave_get_window` 只返回结构化波形事实，不解释波形含义、不判断 bug、不生成自然语言摘要。每个 signal 独立标记 `truncated`；空 `transitions` 是正常结果，不是错误。
+
 ---
 
 ## Error Model
@@ -233,6 +283,11 @@ WAVES returns errors in three stable categories. All messages are in English and
 | **Parameter error** | `limit <= 0`, `time < 0`, `start_time < 0`, `end_time < 0`, or `start_time > end_time` | `Parameter error: <reason>.` | `Parameter error: limit must be greater than 0, got 0.` |
 
 `wave_get_info` only produces **VCD file error**; it does not accept signal names or time parameters.
+
+`wave_get_window` can produce all three error categories:
+- **VCD file error** for invalid `vcd_path`
+- **Signal error** for any unknown signal in `signals`
+- **Parameter error** for invalid `start_time`/`end_time`/`limit_per_signal` or if `signals` is empty or exceeds 20 signals
 
 Empty results are **not** errors:
 - `wave_get_transitions` returns `"transitions": []` when no value changes exist in the requested range.

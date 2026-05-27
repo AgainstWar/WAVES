@@ -12,7 +12,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 from pydantic import Field
 
-from waves.query import WavesQueryError, get_info, get_transitions, get_value, list_signals
+from waves.query import WavesQueryError, get_info, get_transitions, get_value, get_window, list_signals
 
 # FastMCP application instance (stdio transport only).
 mcp = FastMCP("WAVES")
@@ -102,6 +102,35 @@ def wave_get_transitions(
             start_time=start_time,
             end_time=end_time,
             limit=limit,
+        )
+    except WavesQueryError as exc:
+        raise _tool_error(exc) from exc
+
+
+@mcp.tool()
+def wave_get_window(
+    vcd_path: Annotated[str, Field(description="Explicit path to the VCD file.")],
+    signals: Annotated[
+        list[str], Field(description="Exact hierarchical signal names returned by wave_list_signals.")
+    ],
+    start_time: Annotated[int, Field(description="Inclusive raw VCD integer start timestamp.")],
+    end_time: Annotated[int, Field(description="Inclusive raw VCD integer end timestamp.")],
+    limit_per_signal: Annotated[
+        int, Field(description="Maximum transition records to return per signal.")
+    ] = 50,
+) -> dict:
+    # MCP tool description (sent to LLM client via tools/list)
+    """Get recorded transitions for multiple VCD signals in one inclusive time window.
+
+    Returns waveform facts only; it does not interpret or diagnose the waveform.
+    """
+    try:
+        return get_window(
+            vcd_path=vcd_path,
+            signals=signals,
+            start_time=start_time,
+            end_time=end_time,
+            limit_per_signal=limit_per_signal,
         )
     except WavesQueryError as exc:
         raise _tool_error(exc) from exc

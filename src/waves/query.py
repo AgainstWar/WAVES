@@ -126,3 +126,61 @@ def get_transitions(
         "transitions": transitions[:limit],
         "truncated": transition_count > limit,
     }
+
+
+def get_window(
+    vcd_path: str,
+    signals: list[str],
+    start_time: int,
+    end_time: int,
+    limit_per_signal: int = 50,
+) -> dict[str, object]:
+    """Get recorded transitions for multiple VCD signals in one inclusive time window.
+
+    Returns waveform facts only; it does not interpret or diagnose the waveform.
+    """
+    if not signals:
+        raise WavesQueryError("Parameter error: signals must not be empty.")
+    if len(signals) > 20:
+        raise WavesQueryError(
+            f"Parameter error: signals must contain at most 20 signals, got {len(signals)}."
+        )
+    if limit_per_signal <= 0:
+        raise WavesQueryError(
+            f"Parameter error: limit_per_signal must be greater than 0, got {limit_per_signal}."
+        )
+    if start_time < 0:
+        raise WavesQueryError(
+            f"Parameter error: start_time must be greater than or equal to 0, got {start_time}."
+        )
+    if end_time < 0:
+        raise WavesQueryError(
+            f"Parameter error: end_time must be greater than or equal to 0, got {end_time}."
+        )
+    if start_time > end_time:
+        raise WavesQueryError(
+            f"Parameter error: start_time must be less than or equal to end_time, got start_time={start_time}, end_time={end_time}."
+        )
+
+    parsed = _load_vcd(vcd_path)
+    result_signals = []
+
+    for signal in signals:
+        info = _get_signal(parsed, signal)
+        transitions = [
+            {"time": transition_time, "value": transition_value}
+            for transition_time, transition_value in info.transitions
+            if start_time <= transition_time <= end_time
+        ]
+        transition_count = len(transitions)
+        result_signals.append({
+            "signal": signal,
+            "transitions": transitions[:limit_per_signal],
+            "truncated": transition_count > limit_per_signal,
+        })
+
+    return {
+        "start_time": start_time,
+        "end_time": end_time,
+        "signals": result_signals,
+    }

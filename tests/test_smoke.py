@@ -1,10 +1,9 @@
-"""WAVES smoke test — minimal executable verification for all MCP tools.
-
-Runs the five public query functions against a real Icarus-Verilog-generated
-VCD (tests/fixtures/sample.vcd) and asserts on return shapes, field values,
-and exact error-message text.  This is not a pytest suite; it exits with
-SMOKE_OK or raises AssertionError.
-"""
+# WAVES smoke test — minimal executable verification for all MCP tools.
+#
+# Runs the five public query functions against a real Icarus-Verilog-generated
+# VCD (tests/fixtures/sample.vcd) and asserts on return shapes, field values,
+# and exact error-message text.  This is not a pytest suite; it exits with
+# SMOKE_OK or raises AssertionError.
 
 from __future__ import annotations
 
@@ -20,24 +19,22 @@ VCD_PATH = "tests/fixtures/sample.vcd"
 
 
 def assert_equal(actual: object, expected: object, message: str) -> None:
-    """Raise AssertionError with context if *actual* != *expected*."""
+    # Raise AssertionError with context if actual != expected.
     if actual != expected:
         raise AssertionError(f"{message}: expected {expected!r}, got {actual!r}")
 
 
 def require_dict(value: object, message: str) -> dict[str, Any]:
-    """Assert *value* is a dict and return it casted."""
+    # Assert value is a dict and return it casted.
     if not isinstance(value, dict):
         raise AssertionError(message)
     return cast(dict[str, Any], value)
 
 
 def assert_error_contains(fn: object, expected_substring: str, message: str) -> None:
-    """Call *fn* and assert it raises WavesQueryError containing *expected_substring*.
-
-    If no exception is raised, or the message does not contain the substring,
-    raises AssertionError.
-    """
+    # Call fn and assert it raises WavesQueryError containing expected_substring.
+    # If no exception is raised, or the message does not contain the substring,
+    # raises AssertionError.
     try:
         if callable(fn):
             fn()

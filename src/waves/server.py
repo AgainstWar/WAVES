@@ -1,10 +1,9 @@
-"""WAVES MCP server — stdio tool set for querying VCD waveform files.
-
-Exposes MCP tools that delegate to the query layer (waves.query).  All tool
-descriptions and parameter docs are consumed by LLM clients via the MCP
-protocol (tools/list).  Transport is stdio only; no HTTP, no SSE, no session
-state.
-"""
+# WAVES MCP server — stdio tool set for querying VCD waveform files.
+#
+# Exposes MCP tools that delegate to the query layer (waves.query).  All tool
+# descriptions and parameter docs are consumed by LLM clients via the MCP
+# protocol (tools/list).  Transport is stdio only; no HTTP, no SSE, no session
+# state.
 
 from __future__ import annotations
 

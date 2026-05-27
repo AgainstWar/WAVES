@@ -1,12 +1,11 @@
-"""Minimal VCD parser for WAVES.
-
-Supports scalar and vector value changes, hierarchical signal names,
-Icarus Verilog extensions (multi-char identifiers, $dumpall, $parameter),
-and basic malformed-VCD detection.
-
-All times are stored as raw integer timestamps; timescale is parsed as
-metadata only.
-"""
+# Minimal VCD parser for WAVES.
+#
+# Supports scalar and vector value changes, hierarchical signal names,
+# Icarus Verilog extensions (multi-char identifiers, $dumpall, $parameter),
+# and basic malformed-VCD detection.
+#
+# All times are stored as raw integer timestamps; timescale is parsed as
+# metadata only.
 
 from __future__ import annotations
 
@@ -20,15 +19,11 @@ class WavesVCDError(Exception):
 
 @dataclass(slots=True)
 class SignalInfo:
-    """Metadata and transition list for one VCD signal.
-
-    Attributes:
-        identifier: The short VCD identifier (e.g. "!" or "]\").")
-        width: Bit width (1 for scalars, >1 for vectors).
-        transitions: Ordered list of (time, value) tuples.  Time is a raw
-            integer timestamp; value is a lower-case bit string without
-            a "b" prefix.
-    """
+    """Metadata and transition list for one VCD signal."""
+    # identifier: short VCD id (e.g. "!" or "]\"")
+    # width: bit width (1=scalar, >1=vector)
+    # transitions: ordered (time, value) tuples; time is raw integer;
+    #              value is lower-case bit string without "b" prefix
     identifier: str
     width: int
     transitions: list[tuple[int, str]] = field(default_factory=list)
@@ -36,15 +31,11 @@ class SignalInfo:
 
 @dataclass(slots=True)
 class ParsedVCD:
-    """Result of parsing a VCD file.
-
-    Attributes:
-        timescale: The VCD timescale string (e.g. "1ps", "1ns").
-        signals: Mapping from full hierarchical name to SignalInfo.
-        start_time: Always 0 (dumpvars implicitly happen at time 0).
-        end_time: Last explicit timestamp in the file, or None if the file
-            contains no #timestamp lines.
-    """
+    """Result of parsing a VCD file."""
+    # timescale: VCD timescale string (e.g. "1ps", "1ns")
+    # signals: full hierarchical name -> SignalInfo
+    # start_time: always 0 (dumpvars implicitly at time 0)
+    # end_time: last explicit timestamp, or None if no #timestamp lines
     timescale: str
     signals: dict[str, SignalInfo]
     start_time: int = 0
@@ -54,14 +45,7 @@ class ParsedVCD:
 def parse_vcd(path: str | Path) -> ParsedVCD:
     """Parse a VCD file and return its metadata plus all signal transitions.
 
-    Args:
-        path: Absolute or relative path to the VCD file.
-
-    Returns:
-        ParsedVCD containing timescale, signal map, and time range.
-
-    Raises:
-        WavesVCDError: If the file is missing, unreadable, or not a valid VCD.
+    Raises WavesVCDError if the file is missing, unreadable, or not a valid VCD.
     """
     file_path = Path(path)
     if not file_path.exists():
@@ -86,11 +70,11 @@ def parse_vcd(path: str | Path) -> ParsedVCD:
     command_buffer: list[str] = []
 
     def malformed(message: str) -> WavesVCDError:
-        """Build a WavesVCDError with a malformed-VCD reason."""
+        # Build a WavesVCDError with a malformed-VCD reason.
         return WavesVCDError(message)
 
     def process_command(command_text: str) -> None:
-        """Handle a single VCD command (e.g. $timescale, $var, $scope)."""
+        # Handle a single VCD command (e.g. $timescale, $var, $scope).
         nonlocal timescale, saw_enddefinitions
 
         parts = command_text.split()
@@ -159,7 +143,7 @@ def parse_vcd(path: str | Path) -> ParsedVCD:
         raise WavesVCDError(f"unsupported VCD construct: {keyword}")
 
     def record_value_change(identifier: str, value: str) -> None:
-        """Record a value change for all signals sharing this identifier."""
+        # Record a value change for all signals sharing this identifier.
         signal_list = signal_by_id.get(identifier)
         if not signal_list:
             raise malformed(f"value change for unknown identifier: {identifier}")
@@ -177,7 +161,7 @@ def parse_vcd(path: str | Path) -> ParsedVCD:
             signal.transitions.append((current_time, normalized))
 
     def process_value_change(line: str) -> None:
-        """Parse one value-change line (vector or scalar) and record it."""
+        # Parse one value-change line (vector or scalar) and record it.
         if line.startswith("b"):
             parts = line.split()
             if len(parts) != 2:

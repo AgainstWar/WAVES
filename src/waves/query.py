@@ -25,6 +25,21 @@ def _get_signal(parsed: ParsedVCD, signal: str) -> SignalInfo:
     return info
 
 
+def get_info(vcd_path: str) -> dict[str, object]:
+    """Get basic file-level information from a VCD file.
+
+    Returns timescale, start/end timestamps, and signal count.
+    """
+    parsed = _load_vcd(vcd_path)
+    return {
+        "vcd_path": vcd_path,
+        "timescale": parsed.timescale,
+        "start_time": parsed.start_time,
+        "end_time": parsed.end_time,
+        "signal_count": len(parsed.signals),
+    }
+
+
 def list_signals(vcd_path: str, filter: str | None = None, limit: int = 100) -> dict[str, object]:
     """List queryable signals in a VCD file.
 

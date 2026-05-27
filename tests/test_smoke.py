@@ -4,7 +4,7 @@ from typing import Any, cast
 
 import waves.query
 import waves.vcd_parser
-from waves.query import WavesQueryError, get_transitions, get_value, list_signals
+from waves.query import WavesQueryError, get_info, get_transitions, get_value, list_signals
 from waves.server import main, mcp
 
 
@@ -27,6 +27,13 @@ def main_smoke() -> None:
     assert callable(main)
     assert waves.query is not None
     assert waves.vcd_parser is not None
+
+    info = require_dict(get_info(VCD_PATH), "get_info must return a dict")
+    assert_equal(info["vcd_path"], VCD_PATH, "info vcd_path mismatch")
+    assert_equal(info["timescale"], "1ns", "info timescale mismatch")
+    assert_equal(info["start_time"], 0, "info start_time mismatch")
+    assert_equal(info["end_time"], 140, "info end_time mismatch")
+    assert_equal(info["signal_count"], 3, "info signal_count mismatch")
 
     signals = require_dict(list_signals(VCD_PATH), "list_signals must return a dict")
     assert_equal(signals["signal_count"], 3, "signal_count mismatch")

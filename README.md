@@ -14,6 +14,7 @@ WAVES 将 VCD 波形文件封装为 MCP 工具集，让 LLM 客户端（如 Clau
 
 | 工具名 | 功能 | 输入参数 | 返回 |
 |--------|------|----------|------|
+| `wave_get_info` | 获取 VCD 文件级基础信息 | `vcd_path` | timescale、时间范围、信号总数 |
 | `wave_list_signals` | 列出 VCD 中所有信号 | `vcd_path`, `filter?`, `limit?` | 信号名列表、位宽、是否截断 |
 | `wave_get_value` | 查询信号在指定时间的值 | `vcd_path`, `signal`, `time` | 信号值（at-or-before 语义） |
 | `wave_get_transitions` | 查询信号在时间段内的变化 | `vcd_path`, `signal`, `start_time`, `end_time`, `limit?` | 变化记录列表 |
@@ -121,6 +122,28 @@ waves
 
 假设你有一个 Icarus Verilog 生成的 VCD 文件 `fsm_norm.vcd`，以下是各工具的调用示例。
 
+### 获取文件信息
+
+```json
+{
+  "vcd_path": "/path/to/fsm_norm.vcd"
+}
+```
+
+返回：
+
+```json
+{
+  "vcd_path": "/path/to/fsm_norm.vcd",
+  "timescale": "1ps",
+  "start_time": 0,
+  "end_time": 1361000,
+  "signal_count": 251
+}
+```
+
+> `start_time` 和 `end_time` 是原始 VCD 整数时间戳，不做单位换算。如果没有显式时间戳行，`end_time` 为 `null`。
+
 ### 列出所有信号
 
 ```json
@@ -209,9 +232,12 @@ WAVES returns errors in three stable categories. All messages are in English and
 | **Signal error** | `signal` does not match any full hierarchical name in the VCD | `Signal error: signal not found: <signal>.` | `Signal error: signal not found: tb.dut.clk.` |
 | **Parameter error** | `limit <= 0`, `time < 0`, `start_time < 0`, `end_time < 0`, or `start_time > end_time` | `Parameter error: <reason>.` | `Parameter error: limit must be greater than 0, got 0.` |
 
+`wave_get_info` only produces **VCD file error**; it does not accept signal names or time parameters.
+
 Empty results are **not** errors:
 - `wave_get_transitions` returns `"transitions": []` when no value changes exist in the requested range.
 - `wave_get_value` returns `"value": null` when the signal has no recorded value at or before the requested time.
+- `wave_get_info` returns `"end_time": null` when the VCD contains no explicit timestamp lines (only a `$dumpvars` snapshot at time 0).
 
 ---
 

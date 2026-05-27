@@ -19,6 +19,8 @@ class SignalInfo:
 class ParsedVCD:
     timescale: str
     signals: dict[str, SignalInfo]
+    start_time: int = 0
+    end_time: int | None = None
 
 
 def parse_vcd(path: str | Path) -> ParsedVCD:
@@ -38,6 +40,7 @@ def parse_vcd(path: str | Path) -> ParsedVCD:
     signal_by_id: dict[str, list[SignalInfo]] = {}
     signals: dict[str, SignalInfo] = {}
     current_time = 0
+    has_timestamps = False
     saw_enddefinitions = False
     in_dumpvars = False
     command_buffer: list[str] = []
@@ -198,6 +201,7 @@ def parse_vcd(path: str | Path) -> ParsedVCD:
             if next_time < current_time:
                 raise malformed("timestamps must be non-decreasing")
             current_time = next_time
+            has_timestamps = True
             continue
 
         if not saw_enddefinitions:
@@ -213,4 +217,10 @@ def parse_vcd(path: str | Path) -> ParsedVCD:
     if not saw_enddefinitions:
         raise malformed("missing $enddefinitions")
 
-    return ParsedVCD(timescale=timescale, signals=signals)
+    end_time = current_time if has_timestamps else None
+    return ParsedVCD(
+        timescale=timescale,
+        signals=signals,
+        start_time=0,
+        end_time=end_time,
+    )

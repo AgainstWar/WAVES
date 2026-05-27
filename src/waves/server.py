@@ -12,7 +12,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 from pydantic import Field
 
-from waves.query import WavesQueryError, get_transitions, get_value, list_signals
+from waves.query import WavesQueryError, get_info, get_transitions, get_value, list_signals
 
 # FastMCP application instance (stdio transport only).
 mcp = FastMCP("WAVES")
@@ -22,6 +22,21 @@ def _tool_error(exc: WavesQueryError) -> ToolError:
     # Convert domain exceptions into MCP ToolError so the server returns
     # a clean error message to the LLM client.
     return ToolError(str(exc))
+
+
+@mcp.tool()
+def wave_get_info(
+    vcd_path: Annotated[str, Field(description="Explicit path to the VCD file.")],
+) -> dict:
+    # MCP tool description (sent to LLM client via tools/list)
+    """Get basic file-level information from a VCD file.
+
+    Returns timescale, start/end timestamps, and signal count.
+    """
+    try:
+        return get_info(vcd_path=vcd_path)
+    except WavesQueryError as exc:
+        raise _tool_error(exc) from exc
 
 
 # MCP tool description: visible to LLM via tools/list

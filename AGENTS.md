@@ -1,7 +1,7 @@
 # WAVES Knowledge Base
 
-**Generated:** 2026-05-24
-**Commit:** 91c421b
+**Generated:** 2026-05-27
+**Commit:** 98b77ae
 **Branch:** master
 
 ## OVERVIEW
@@ -17,10 +17,10 @@ waves/
 ├── src/waves/
 │   ├── __init__.py
 │   ├── vcd_parser.py       # Minimal VCD parser (scalar + vector)
-│   ├── query.py            # Signal lookup, value, transitions
-│   └── server.py           # FastMCP stdio server, 3 tools
+│   ├── query.py            # Signal lookup, value, transitions, window
+│   └── server.py           # FastMCP stdio server, 5 tools
 ├── tests/
-│   ├── fixtures/simple.vcd # Test waveform fixture
+│   ├── fixtures/sample.vcd # Test waveform fixture (Icarus Verilog)
 │   └── test_smoke.py       # Minimal executable verification
 ```
 
@@ -30,7 +30,7 @@ waves/
 |------|----------|-------|
 | Add VCD format support | `src/waves/vcd_parser.py` | Only scalar/vector now |
 | Add query logic | `src/waves/query.py` | filter, limit, range, truncation |
-| Add MCP tools | `src/waves/server.py` | 3 tool decorators |
+| Add MCP tools | `src/waves/server.py` | 5 tool decorators |
 | Fix install/runtime | `pyproject.toml` | entrypoint: `waves = waves.server:main` |
 
 ## CODE MAP
@@ -38,13 +38,17 @@ waves/
 | Symbol | Type | Location | Role |
 |--------|------|----------|------|
 | `parse_vcd` | function | `vcd_parser.py:24` | Entry parser, returns `ParsedVCD` |
-| `list_signals` | function | `query.py:24` | Filtered signal listing |
-| `get_value` | function | `query.py:57` | At-or-before value lookup |
-| `get_transitions` | function | `query.py:84` | Inclusive range transitions |
-| `wave_list_signals` | MCP tool | `server.py:17` | Delegates to `list_signals` |
-| `wave_get_value` | MCP tool | `server.py:26` | Delegates to `get_value` |
-| `wave_get_transitions` | MCP tool | `server.py:35` | Delegates to `get_transitions` |
-| `main` | function | `server.py:55` | Calls `mcp.run()` (stdio) |
+| `list_signals` | function | `query.py:70` | Filtered signal listing |
+| `get_value` | function | `query.py:104` | At-or-before value lookup |
+| `get_transitions` | function | `query.py:137` | Inclusive range transitions |
+| `get_window` | function | `query.py:190` | Multi-signal window slice |
+| `get_info` | function | `query.py:53` | File-level metadata |
+| `wave_list_signals` | MCP tool | `server.py:44` | Delegates to `list_signals` |
+| `wave_get_value` | MCP tool | `server.py:63` | Delegates to `get_value` |
+| `wave_get_transitions` | MCP tool | `server.py:82` | Delegates to `get_transitions` |
+| `wave_get_window` | MCP tool | `server.py:109` | Delegates to `get_window` |
+| `wave_get_info` | MCP tool | `server.py:29` | Delegates to `get_info` |
+| `main` | function | `server.py:138` | Calls `mcp.run()` (stdio) |
 
 ## CONVENTIONS
 
@@ -82,7 +86,7 @@ waves                          # Start stdio MCP server
 
 ## ICARUS VERILOG COMPATIBILITY
 
-Tested with Icarus Verilog generated VCD files (`sample/sample.vcd`):
+Tested with Icarus Verilog generated VCD files (`tests/fixtures/sample.vcd`):
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -103,17 +107,17 @@ npx @modelcontextprotocol/inspector waves
 npx @modelcontextprotocol/inspector --cli waves --method tools/list
 npx @modelcontextprotocol/inspector --cli waves --method tools/call \
   --tool-name wave_list_signals \
-  --tool-arg vcd_path=sample/sample.vcd
+  --tool-arg "vcd_path=tests/fixtures/sample.vcd"
 npx @modelcontextprotocol/inspector --cli waves --method tools/call \
   --tool-name wave_get_value \
-  --tool-arg vcd_path=sample/sample.vcd \
+  --tool-arg "vcd_path=tests/fixtures/sample.vcd" \
   --tool-arg signal=tb_pmic_fsm.clk \
   --tool-arg time=100000
 ```
 
 ## NOTES
 
-- Fixture contract: `tests/fixtures/simple.vcd` must contain `top.clk`, `top.reset`, `top.dut.out` with exact transitions
+- Fixture contract: `tests/fixtures/sample.vcd` must contain `tb_pmic_fsm.clk`, `tb_pmic_fsm.rst_n`, `tb_pmic_fsm.current_state [3:0]` with exact transitions
 - `WavesVCDError` / `WavesQueryError` are the only domain exceptions; server converts to MCP `ToolError`
 - `.sisyphus/` contains planning artifacts and evidence (not shipped)
 - `.gitignore` excludes `__pycache__/` and `.egg-info/`

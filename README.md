@@ -52,8 +52,7 @@ python -m pip install -e ".[dev]"
 ### 验证安装
 
 ```bash
-waves --help        # 查看帮助
-python tests/test_smoke.py  # 运行冒烟测试
+python tests/test_smoke.py  # 运行冒烟测试（预期输出：SMOKE_OK）
 ```
 
 ---
@@ -328,19 +327,19 @@ npx @modelcontextprotocol/inspector --cli waves --method tools/list
 # 调用 wave_list_signals
 npx @modelcontextprotocol/inspector --cli waves --method tools/call \
   --tool-name wave_list_signals \
-  --tool-arg vcd_path=sample/sample.vcd
+  --tool-arg "vcd_path=tests/fixtures/sample.vcd"
 
 # 调用 wave_get_value
 npx @modelcontextprotocol/inspector --cli waves --method tools/call \
   --tool-name wave_get_value \
-  --tool-arg vcd_path=sample/sample.vcd \
+  --tool-arg "vcd_path=tests/fixtures/sample.vcd" \
   --tool-arg signal=tb_pmic_fsm.clk \
   --tool-arg time=100000
 
 # 调用 wave_get_transitions
 npx @modelcontextprotocol/inspector --cli waves --method tools/call \
   --tool-name wave_get_transitions \
-  --tool-arg vcd_path=sample/sample.vcd \
+  --tool-arg "vcd_path=tests/fixtures/sample.vcd" \
   --tool-arg signal=tb_pmic_fsm.clk \
   --tool-arg start_time=0 \
   --tool-arg end_time=200000
@@ -361,7 +360,7 @@ WAVES 已针对 Icarus Verilog 生成的 VCD 文件进行兼容性测试：
 | 短 vector 值 | ✅ 支持 | 值长度可小于信号位宽（VCD 隐式扩展） |
 | `$parameter` 类型 | ✅ 支持 | 按 `wire`/`reg` 处理，可正常列出和查询 |
 
-> 示例文件：`sample/sample.vcd`（251 信号，时间范围 0 ~ 1,361,000 ps）
+> 示例文件：`tests/fixtures/sample.vcd`（251 信号，时间范围 0 ~ 1,361,000 ps）
 
 ---
 

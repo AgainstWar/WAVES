@@ -2,7 +2,7 @@
 
 **WAVES**（Waveform Access via Explicit Signals）是一个基于 [Model Context Protocol (MCP)](https://modelcontextprotocol.io) 的本地 stdio 工具，用于查询 VCD（Value Change Dump）波形文件中的信号值和时序变化。
 
-> 🔧 **当前版本**：v0.1.0 — 支持信号列表、点值查询、变化记录查询和波形窗口切片
+> 🔧 **当前版本**：v0.1.0 — 支持信号列表、点值查询、变化记录查询、波形窗口切片和变化导航
 
 ---
 
@@ -19,6 +19,7 @@ WAVES 将 VCD 波形文件封装为 MCP 工具集，让 LLM 客户端（如 Clau
 | `wave_get_value` | 查询信号在指定时间的值 | `vcd_path`, `signal`, `time` | 信号值（at-or-before 语义） |
 | `wave_get_transitions` | 查询信号在时间段内的变化 | `vcd_path`, `signal`, `start_time`, `end_time`, `limit?` | 变化记录列表 |
 | `wave_get_window` | 查询多个信号在同一窗口内的变化 | `vcd_path`, `signals`, `start_time`, `end_time`, `limit_per_signal?` | 每个信号的变化记录列表 |
+| `wave_find_transition` | 查找指定时间之前或之后的最近变化 | `vcd_path`, `signal`, `time`, `direction`, `edge?` | 找到时返回 `found=true` + 变化详情，未找到时返回 `found=false` |
 
 ### 核心特性
 
@@ -269,6 +270,34 @@ waves
 
 > `wave_get_window` 只返回结构化波形事实，不解释波形含义、不判断 bug、不生成自然语言摘要。每个 signal 独立标记 `truncated`；空 `transitions` 是正常结果，不是错误。
 
+### 查找信号变化
+
+```json
+{
+  "vcd_path": "/path/to/fsm_norm.vcd",
+  "signal": "tb_pmic_fsm.clk",
+  "time": 50000,
+  "direction": "next",
+  "edge": "posedge"
+}
+```
+
+返回：
+
+```json
+{
+  "found": true,
+  "signal": "tb_pmic_fsm.clk",
+  "query_time": 50000,
+  "transition_time": 60000,
+  "from": "0",
+  "to": "1",
+  "edge": "posedge"
+}
+```
+
+> **严格语义**：`next` 查找 `time` **之后**（`t > time`）的第一个匹配变化；`prev` 查找 `time` **之前**（`t < time`）的最后一个匹配变化。`edge` 可指定 `any`（任意变化）、`posedge`（单 bit 0→1）或 `negedge`（单 bit 1→0）。对 vector 和多 bit 信号，`posedge`/`negedge` 不会匹配。未找到时返回 `found=false`，`transition_time`、`from`、`to` 均为 `null`，**不是错误**。
+
 ---
 
 ## Error Model
@@ -279,7 +308,12 @@ WAVES returns errors in three stable categories. All messages are in English and
 |----------|------|--------|---------|
 | **VCD file error** | `vcd_path` does not exist, is not a file, is unreadable, or is not a valid VCD | `VCD file error: <path>. Reason: <reason>.` | `VCD file error: /tmp/wave.vcd. Reason: file not found.` |
 | **Signal error** | `signal` does not match any full hierarchical name in the VCD | `Signal error: signal not found: <signal>.` | `Signal error: signal not found: tb.dut.clk.` |
-| **Parameter error** | `limit <= 0`, `time < 0`, `start_time < 0`, `end_time < 0`, or `start_time > end_time` | `Parameter error: <reason>.` | `Parameter error: limit must be greater than 0, got 0.` |
+| **Parameter error** | `limit <= 0`, `time < 0`, `start_time < 0`, `end_time < 0`, `start_time > end_time`, `direction` not in `['next', 'prev']`, `edge` not in `['any', 'posedge', 'negedge']` | `Parameter error: <reason>.` | `Parameter error: limit must be greater than 0, got 0.` |
+
+`wave_find_transition` can produce all three error categories:
+- **VCD file error** for invalid `vcd_path`
+- **Signal error** for unknown `signal`
+- **Parameter error** for invalid `time`/`direction`/`edge`
 
 `wave_get_info` only produces **VCD file error**; it does not accept signal names or time parameters.
 
@@ -292,6 +326,7 @@ Empty results are **not** errors:
 - `wave_get_transitions` returns `"transitions": []` when no value changes exist in the requested range.
 - `wave_get_value` returns `"value": null` when the signal has no recorded value at or before the requested time.
 - `wave_get_info` returns `"end_time": null` when the VCD contains no explicit timestamp lines (only a `$dumpvars` snapshot at time 0).
+- `wave_find_transition` returns `"found": false` when no matching transition exists in the requested direction.
 
 ---
 

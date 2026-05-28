@@ -11,7 +11,7 @@ from typing import Any, cast
 
 import waves.query
 import waves.vcd_parser
-from waves.query import WavesQueryError, get_info, get_transitions, get_value, get_window, list_signals
+from waves.query import WavesQueryError, find_transition, get_info, get_transitions, get_value, get_window, list_signals
 from waves.server import main, mcp
 
 # Path to the Icarus Verilog test fixture used for all smoke checks.
@@ -248,6 +248,129 @@ def main_smoke() -> None:
         lambda: get_window(VCD_PATH, ["tb_pmic_fsm.nonexistent"], 0, 100, limit_per_signal=50),
         "Signal error: signal not found: tb_pmic_fsm.nonexistent",
         "expected Signal error for unknown signal in window",
+    )
+
+    # ==================================================================
+    # wave_find_transition
+    # ==================================================================
+    # clk is known to toggle at t=0("0"), 10000("1"), 20000("0"), 30000("1")...
+
+    # next any: find first transition strictly after time=5000 → t=10000, 0->1
+    r1 = require_dict(
+        find_transition(VCD_PATH, "tb_pmic_fsm.clk", 5000, "next", "any"),
+        "find_transition must return a dict",
+    )
+    assert_equal(r1["found"], True, "next any found mismatch")
+    assert_equal(r1["transition_time"], 10000, "next any transition_time mismatch")
+    assert_equal(r1["from"], "0", "next any from mismatch")
+    assert_equal(r1["to"], "1", "next any to mismatch")
+    assert_equal(r1["edge"], "any", "next any edge mismatch")
+
+    # prev any: find last transition strictly before time=15000 → t=10000, 0->1
+    r2 = require_dict(
+        find_transition(VCD_PATH, "tb_pmic_fsm.clk", 15000, "prev", "any"),
+        "find_transition must return a dict",
+    )
+    assert_equal(r2["found"], True, "prev any found mismatch")
+    assert_equal(r2["transition_time"], 10000, "prev any transition_time mismatch")
+
+    # next posedge at time=5000 → t=10000, 0->1
+    r3 = require_dict(
+        find_transition(VCD_PATH, "tb_pmic_fsm.clk", 5000, "next", "posedge"),
+        "find_transition must return a dict",
+    )
+    assert_equal(r3["found"], True, "next posedge found mismatch")
+    assert_equal(r3["transition_time"], 10000, "next posedge transition_time mismatch")
+    assert_equal(r3["from"], "0", "next posedge from mismatch")
+    assert_equal(r3["to"], "1", "next posedge to mismatch")
+    assert_equal(r3["edge"], "posedge", "next posedge edge mismatch")
+
+    # prev negedge at time=25000 → t=20000, 1->0
+    r4 = require_dict(
+        find_transition(VCD_PATH, "tb_pmic_fsm.clk", 25000, "prev", "negedge"),
+        "find_transition must return a dict",
+    )
+    assert_equal(r4["found"], True, "prev negedge found mismatch")
+    assert_equal(r4["transition_time"], 20000, "prev negedge transition_time mismatch")
+    assert_equal(r4["from"], "1", "prev negedge from mismatch")
+    assert_equal(r4["to"], "0", "prev negedge to mismatch")
+    assert_equal(r4["edge"], "negedge", "prev negedge edge mismatch")
+
+    # found=false: time far past end of file
+    r5 = require_dict(
+        find_transition(VCD_PATH, "tb_pmic_fsm.clk", 9_999_999, "next", "any"),
+        "find_transition must return a dict",
+    )
+    assert_equal(r5["found"], False, "not-found found mismatch")
+    assert_equal(r5["transition_time"], None, "not-found transition_time mismatch")
+    assert_equal(r5["from"], None, "not-found from mismatch")
+    assert_equal(r5["to"], None, "not-found to mismatch")
+
+    # found=false: prev from time=0 (no t < 0)
+    r6 = require_dict(
+        find_transition(VCD_PATH, "tb_pmic_fsm.clk", 0, "prev", "any"),
+        "find_transition must return a dict",
+    )
+    assert_equal(r6["found"], False, "prev from 0 found mismatch")
+
+    # First transition with prev: at time=1, prev is t=0, from=null, to="0"
+    r7 = require_dict(
+        find_transition(VCD_PATH, "tb_pmic_fsm.clk", 1, "prev", "any"),
+        "find_transition must return a dict",
+    )
+    assert_equal(r7["found"], True, "first transition found mismatch")
+    assert_equal(r7["transition_time"], 0, "first transition time mismatch")
+    assert_equal(r7["from"], None, "first transition from mismatch")
+    assert_equal(r7["to"], "0", "first transition to mismatch")
+
+    # posedge should not match first transition (from is null, not 0->1)
+    r8 = require_dict(
+        find_transition(VCD_PATH, "tb_pmic_fsm.clk", 1, "prev", "posedge"),
+        "find_transition must return a dict",
+    )
+    assert_equal(r8["found"], False, "posedge no-match found mismatch")
+
+    # Vector signal: verify structure and no crash
+    r9 = require_dict(
+        find_transition(VCD_PATH, "tb_pmic_fsm.current_state [3:0]", 0, "next", "any"),
+        "find_transition must return a dict",
+    )
+    assert isinstance(r9["found"], bool)
+    assert_equal(r9["signal"], "tb_pmic_fsm.current_state [3:0]", "vector signal name mismatch")
+    r10 = require_dict(
+        find_transition(VCD_PATH, "tb_pmic_fsm.current_state [3:0]", 0, "next", "posedge"),
+        "find_transition must return a dict",
+    )
+    assert isinstance(r10["found"], bool)
+    assert_equal(r10["signal"], "tb_pmic_fsm.current_state [3:0]", "vector posedge signal name mismatch")
+    assert_equal(r10["edge"], "posedge", "vector posedge edge mismatch")
+
+    # Parameter error: time < 0
+    assert_error_contains(
+        lambda: find_transition(VCD_PATH, "tb_pmic_fsm.clk", -1, "next", "any"),
+        "Parameter error: time must be greater than or equal to 0",
+        "expected Parameter error for negative time",
+    )
+
+    # Parameter error: invalid direction
+    assert_error_contains(
+        lambda: find_transition(VCD_PATH, "tb_pmic_fsm.clk", 100, "invalid", "any"),
+        "Parameter error: direction must be one of ['next', 'prev']",
+        "expected Parameter error for invalid direction",
+    )
+
+    # Parameter error: invalid edge
+    assert_error_contains(
+        lambda: find_transition(VCD_PATH, "tb_pmic_fsm.clk", 100, "next", "invalid"),
+        "Parameter error: edge must be one of ['any', 'posedge', 'negedge']",
+        "expected Parameter error for invalid edge",
+    )
+
+    # Signal error: unknown signal
+    assert_error_contains(
+        lambda: find_transition(VCD_PATH, "tb_pmic_fsm.nonexistent", 100, "next", "any"),
+        "Signal error: signal not found: tb_pmic_fsm.nonexistent",
+        "expected Signal error for unknown signal",
     )
 
     print("SMOKE_OK")

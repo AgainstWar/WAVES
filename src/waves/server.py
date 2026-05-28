@@ -13,10 +13,11 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 from pydantic import Field
 
-from waves.query import WavesQueryError, get_info, get_transitions, get_value, get_window, list_signals
+from waves.query import WavesQueryError, find_transition, get_info, get_transitions, get_value, get_window, list_signals
 
 # FastMCP application instance (stdio transport only).
 mcp = FastMCP("WAVES")
+mcp._mcp_server.version = "0.1.0"
 
 
 def _tool_error(exc: WavesQueryError) -> ToolError:
@@ -129,6 +130,37 @@ def wave_get_window(
             start_time=start_time,
             end_time=end_time,
             limit_per_signal=limit_per_signal,
+        )
+    except WavesQueryError as exc:
+        raise _tool_error(exc) from exc
+
+
+@mcp.tool()
+def wave_find_transition(
+    vcd_path: Annotated[str, Field(description="Explicit path to the VCD file.")],
+    signal: Annotated[
+        str, Field(description="Exact hierarchical signal name returned by wave_list_signals.")
+    ],
+    time: Annotated[int, Field(description="Raw VCD integer timestamp.")],
+    direction: Annotated[
+        str, Field(description="Search direction: next or prev.")
+    ],
+    edge: Annotated[
+        str, Field(description="Transition kind: any, posedge, or negedge.")
+    ] = "any",
+) -> dict:
+    # MCP tool description (sent to LLM client via tools/list)
+    """Find the nearest matching transition for one VCD signal before or after a raw VCD timestamp.
+
+    Can match any transition, posedge, or negedge.
+    """
+    try:
+        return find_transition(
+            vcd_path=vcd_path,
+            signal=signal,
+            time=time,
+            direction=direction,
+            edge=edge,
         )
     except WavesQueryError as exc:
         raise _tool_error(exc) from exc

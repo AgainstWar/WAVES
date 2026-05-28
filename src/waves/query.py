@@ -12,7 +12,10 @@
 
 from __future__ import annotations
 
-from waves.vcd_parser import ParsedVCD, SignalInfo, WavesVCDError, parse_vcd
+from waves.vcd_parser import WavesVCDError, parse_vcd
+
+# Re-export for tests / external use
+from waves.vcd_parser import ParsedVCD, SignalInfo  # noqa: F401
 
 
 class WavesQueryError(Exception):
@@ -215,4 +218,103 @@ def get_window(
         "start_time": start_time,
         "end_time": end_time,
         "signals": result_signals,
+    }
+
+
+def _matches_edge(from_val: str | None, to_val: str, edge: str) -> bool:
+    # Check if a transition (from_val -> to_val) matches the given edge kind.
+    if edge == "any":
+        return True
+    # posedge/negedge require single-bit values, a known from value,
+    # and the correct 0->1 or 1->0 transition.
+    if from_val is None or len(to_val) != 1 or len(from_val) != 1:
+        return False
+    if edge == "posedge":
+        return bool(from_val == "0" and to_val == "1")
+    if edge == "negedge":
+        return bool(from_val == "1" and to_val == "0")
+    return False
+
+
+def _find_next(
+    transitions: list[tuple[int, str]], time: int, edge: str
+) -> tuple[int, str | None, str] | None:
+    # Find the first transition with t > time that matches edge.
+    prev_val: str | None = None
+    for t, v in transitions:
+        if t > time and _matches_edge(prev_val, v, edge):
+            return (t, prev_val, v)
+        prev_val = v
+    return None
+
+
+def _find_prev(
+    transitions: list[tuple[int, str]], time: int, edge: str
+) -> tuple[int, str | None, str] | None:
+    # Find the last transition with t < time that matches edge.
+    prev_val: str | None = None
+    result: tuple[int, str | None, str] | None = None
+    for t, v in transitions:
+        if t < time and _matches_edge(prev_val, v, edge):
+            result = (t, prev_val, v)
+        elif t >= time:
+            break
+        prev_val = v
+    return result
+
+
+def find_transition(
+    vcd_path: str,
+    signal: str,
+    time: int,
+    direction: str,
+    edge: str = "any",
+) -> dict[str, object]:
+    """Find the nearest matching transition for one VCD signal.
+
+    direction: "next" (strictly after time) or "prev" (strictly before time).
+    edge: "any", "posedge" (0->1 single-bit), or "negedge" (1->0 single-bit).
+    Returns found=true with transition details, or found=false on empty result.
+    """
+    if time < 0:
+        raise WavesQueryError(
+            f"Parameter error: time must be greater than or equal to 0, got {time}."
+        )
+    if direction not in ("next", "prev"):
+        raise WavesQueryError(
+            f"Parameter error: direction must be one of ['next', 'prev'], got {direction!r}."
+        )
+    if edge not in ("any", "posedge", "negedge"):
+        raise WavesQueryError(
+            f"Parameter error: edge must be one of ['any', 'posedge', 'negedge'], got {edge!r}."
+        )
+
+    parsed = _load_vcd(vcd_path)
+    info = _get_signal(parsed, signal)
+
+    if direction == "next":
+        match = _find_next(info.transitions, time, edge)
+    else:
+        match = _find_prev(info.transitions, time, edge)
+
+    if match is None:
+        return {
+            "found": False,
+            "signal": signal,
+            "query_time": time,
+            "transition_time": None,
+            "from": None,
+            "to": None,
+            "edge": edge,
+        }
+
+    transition_time, from_val, to_val = match
+    return {
+        "found": True,
+        "signal": signal,
+        "query_time": time,
+        "transition_time": transition_time,
+        "from": from_val,
+        "to": to_val,
+        "edge": edge,
     }

@@ -36,22 +36,22 @@ waves/
 
 ## CODE MAP
 
-| Symbol | Type | Location | Role |
-|--------|------|----------|------|
-| `parse_vcd` | function | `vcd_parser.py:45` | Entry parser, returns `ParsedVCD` |
-| `get_info` | function | `query.py:47` | File-level metadata |
-| `list_signals` | function | `query.py:62` | Filtered signal listing |
-| `get_value` | function | `query.py:88` | At-or-before value lookup |
-| `get_transitions` | function | `query.py:194` | Inclusive range transitions |
-| `get_window` | function | `query.py:384` | Multi-signal window slice |
-| `find_transition` | function | `query.py:548` | Nearest transition before/after time |
-| `wave_get_info` | MCP tool | `server.py:30` | Delegates to `get_info` |
-| `wave_list_signals` | MCP tool | `server.py:45` | Delegates to `list_signals` |
-| `wave_get_value` | MCP tool | `server.py:64` | Delegates to `get_value` |
-| `wave_get_transitions` | MCP tool | `server.py:86` | Delegates to `get_transitions` |
-| `wave_get_window` | MCP tool | `server.py:125` | Delegates to `get_window` |
-| `wave_find_transition` | MCP tool | `server.py:180` | Delegates to `find_transition` |
-| `main` | function | `server.py:210` | Calls `mcp.run()` (stdio) |
+| Symbol | Type | File | Role |
+|--------|------|------|------|
+| `parse_vcd` | function | `vcd_parser.py` | Entry parser, returns `ParsedVCD` |
+| `get_info` | function | `query.py` | File-level metadata |
+| `list_signals` | function | `query.py` | Filtered signal listing |
+| `get_value` | function | `query.py` | At-or-before value lookup |
+| `get_transitions` | function | `query.py` | Inclusive range transitions |
+| `get_window` | function | `query.py` | Multi-signal window slice |
+| `find_transition` | function | `query.py` | Nearest transition before/after time |
+| `wave_get_info` | MCP tool | `server.py` | Delegates to `get_info` |
+| `wave_list_signals` | MCP tool | `server.py` | Delegates to `list_signals` |
+| `wave_get_value` | MCP tool | `server.py` | Delegates to `get_value` |
+| `wave_get_transitions` | MCP tool | `server.py` | Delegates to `get_transitions` |
+| `wave_get_window` | MCP tool | `server.py` | Delegates to `get_window` |
+| `wave_find_transition` | MCP tool | `server.py` | Delegates to `find_transition` |
+| `main` | function | `server.py` | Calls `mcp.run()` (stdio) |
 
 ## CONVENTIONS
 

@@ -17,7 +17,7 @@ WAVES 将 VCD 波形文件封装为 MCP 工具集，让 LLM 客户端（如 Clau
 | `wave_get_info` | 获取 VCD 文件级基础信息 | `vcd_path` | timescale、时间范围、信号总数 |
 | `wave_list_signals` | 列出 VCD 中所有信号 | `vcd_path`, `filter?`, `limit?` | 信号名列表、位宽、是否截断 |
 | `wave_get_value` | 查询信号在指定时间的值 | `vcd_path`, `signal`, `time` | 信号值（at-or-before 语义） |
-| `wave_get_transitions` | 查询信号在时间段内的变化 | `vcd_path`, `signal`, `start_time`, `end_time`, `limit?` | 变化记录列表 |
+| `wave_get_transitions` | 查询信号在时间段内的变化 | `vcd_path`, `signal`, `start_time`, `end_time`, `limit?`, `edge?`, `value?` | 变化记录列表（支持按边沿和值过滤） |
 | `wave_get_window` | 查询多个信号在同一窗口内的变化 | `vcd_path`, `signals`, `start_time`, `end_time`, `limit_per_signal?` | 每个信号的变化记录列表 |
 | `wave_find_transition` | 查找指定时间之前或之后的最近变化 | `vcd_path`, `signal`, `time`, `direction`, `edge?` | 找到时返回 `found=true` + 变化详情，未找到时返回 `found=false` |
 
@@ -221,6 +221,79 @@ waves
 }
 ```
 
+### 查询信号在时间段内的变化（按边沿和值过滤）
+
+支持通过 `edge` 和 `value` 参数过滤变化记录。
+
+**只查上升沿（posedge）：**
+
+```json
+{
+  "vcd_path": "/path/to/fsm_norm.vcd",
+  "signal": "tb_pmic_fsm.clk",
+  "start_time": 0,
+  "end_time": 200000,
+  "edge": "posedge"
+}
+```
+
+返回（只保留 0→1 的上升沿）：
+
+```json
+{
+  "signal": "tb_pmic_fsm.clk",
+  "start_time": 0,
+  "end_time": 200000,
+  "transitions": [
+    {"time": 10000, "value": "1"},
+    {"time": 30000, "value": "1"}
+  ],
+  "truncated": false
+}
+```
+
+**只查结果值为 "1" 的变化：**
+
+```json
+{
+  "vcd_path": "/path/to/fsm_norm.vcd",
+  "signal": "tb_pmic_fsm.clk",
+  "start_time": 0,
+  "end_time": 200000,
+  "value": "1"
+}
+```
+
+返回（只保留变化后值为 "1" 的记录）：
+
+```json
+{
+  "signal": "tb_pmic_fsm.clk",
+  "start_time": 0,
+  "end_time": 200000,
+  "transitions": [
+    {"time": 10000, "value": "1"},
+    {"time": 30000, "value": "1"}
+  ],
+  "truncated": false
+}
+```
+
+**同时按边沿和值过滤：**
+
+```json
+{
+  "vcd_path": "/path/to/fsm_norm.vcd",
+  "signal": "tb_pmic_fsm.clk",
+  "start_time": 0,
+  "end_time": 200000,
+  "edge": "negedge",
+  "value": "0"
+}
+```
+
+> `edge=posedge/negedge` 仅适用于单 bit 0/1 变化。`value` 过滤的是 transition 后的结果值。过滤后无结果时返回 `"transitions": []`，不是错误。
+
 ### 查询多个信号在同一窗口内的变化
 
 ```json
@@ -309,6 +382,11 @@ WAVES returns errors in three stable categories. All messages are in English and
 | **VCD file error** | `vcd_path` does not exist, is not a file, is unreadable, or is not a valid VCD | `VCD file error: <path>. Reason: <reason>.` | `VCD file error: /tmp/wave.vcd. Reason: file not found.` |
 | **Signal error** | `signal` does not match any full hierarchical name in the VCD | `Signal error: signal not found: <signal>.` | `Signal error: signal not found: tb.dut.clk.` |
 | **Parameter error** | `limit <= 0`, `time < 0`, `start_time < 0`, `end_time < 0`, `start_time > end_time`, `direction` not in `['next', 'prev']`, `edge` not in `['any', 'posedge', 'negedge']` | `Parameter error: <reason>.` | `Parameter error: limit must be greater than 0, got 0.` |
+
+`wave_get_transitions` can produce all three error categories:
+- **VCD file error** for invalid `vcd_path`
+- **Signal error** for unknown `signal`
+- **Parameter error** for invalid `limit`/`start_time`/`end_time`, `edge`, or `value` (must be a string)
 
 `wave_find_transition` can produce all three error categories:
 - **VCD file error** for invalid `vcd_path`

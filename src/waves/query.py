@@ -109,17 +109,29 @@ def get_value(vcd_path: str, signal: str, time: int) -> dict[str, object]:
     return {"signal": signal, "time": time, "value": value}
 
 
+def _match_value(val: str, target: str | None) -> bool:
+    # Check if transition value val matches the target filter.
+    # None means no filter (match all).
+    if target is None:
+        return True
+    return val == target
+
+
 def get_transitions(
     vcd_path: str,
     signal: str,
     start_time: int,
     end_time: int,
     limit: int = 50,
+    edge: str = "any",
+    value: str | None = None,
 ) -> dict[str, object]:
     """Get recorded signal transitions in an inclusive raw VCD time range.
 
+    Can optionally filter by transition kind and resulting value.
     Use limit to cap the number of returned transition records.
     """
+    # Validate parameters
     if limit <= 0:
         raise WavesQueryError(f"Parameter error: limit must be greater than 0, got {limit}.")
     if start_time < 0:
@@ -130,23 +142,34 @@ def get_transitions(
         raise WavesQueryError(
             f"Parameter error: start_time must be less than or equal to end_time, got start_time={start_time}, end_time={end_time}."
         )
+    if edge not in ("any", "posedge", "negedge"):
+        raise WavesQueryError(
+            f"Parameter error: edge must be one of ['any', 'posedge', 'negedge'], got {edge!r}."
+        )
+    if value is not None and not isinstance(value, str):
+        raise WavesQueryError("Parameter error: value must be a string if provided.")
 
     parsed = _load_vcd(vcd_path)
     info = _get_signal(parsed, signal)
 
-    # inclusive filter
-    transitions = [
-        {"time": transition_time, "value": transition_value}
-        for transition_time, transition_value in info.transitions
-        if start_time <= transition_time <= end_time
-    ]
-    transition_count = len(transitions)
+    # Filter by: time window -> edge -> value -> limit
+    filtered: list[dict[str, object]] = []
+    prev_val: str | None = None
+    for transition_time, transition_value in info.transitions:
+        in_window = start_time <= transition_time <= end_time
+
+        if in_window and _matches_edge(prev_val, transition_value, edge) and _match_value(transition_value, value):
+            filtered.append({"time": transition_time, "value": transition_value})
+
+        prev_val = transition_value
+
+    transition_count = len(filtered)
 
     return {
         "signal": signal,
         "start_time": start_time,
         "end_time": end_time,
-        "transitions": transitions[:limit],
+        "transitions": filtered[:limit],
         "truncated": transition_count > limit,
     }
 

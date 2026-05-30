@@ -88,11 +88,17 @@ def wave_get_transitions(
     start_time: Annotated[int, Field(description="Inclusive raw VCD integer start timestamp.")],
     end_time: Annotated[int, Field(description="Inclusive raw VCD integer end timestamp.")],
     limit: Annotated[int, Field(description="Maximum number of records to return.")] = 50,
+    edge: Annotated[
+        str, Field(description="Optional transition kind filter: any, posedge, or negedge.")
+    ] = "any",
+    value: Annotated[
+        str | None, Field(description="Optional filter on the resulting transition value.")
+    ] = None,
 ) -> dict:
     # MCP tool description (sent to LLM client via tools/list)
     """Get recorded signal transitions in an inclusive raw VCD time range.
 
-    Use limit to cap the number of returned transition records.
+    Can optionally filter by transition kind and resulting value.
     """
     try:
         return get_transitions(
@@ -101,6 +107,8 @@ def wave_get_transitions(
             start_time=start_time,
             end_time=end_time,
             limit=limit,
+            edge=edge,
+            value=value,
         )
     except WavesQueryError as exc:
         raise _tool_error(exc) from exc

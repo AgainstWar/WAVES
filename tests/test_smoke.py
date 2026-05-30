@@ -151,6 +151,72 @@ def main_smoke() -> None:
         "expected Parameter error for negative start_time",
     )
 
+    # edge="any" yields same results as default (no filtering)
+    any_edge = require_dict(
+        get_transitions(VCD_PATH, "tb_pmic_fsm.clk", 0, 50000, limit=50, edge="any"),
+        "get_transitions with edge=any must return a dict",
+    )
+    assert_equal(any_edge["transitions"][0], {"time": 0, "value": "0"}, "edge=any first transition mismatch")
+    assert_equal(len(any_edge["transitions"]), 6, "edge=any expected 6 transitions in [0, 50000]")
+
+    # edge="posedge": only 0->1 transitions (clk: t=10000, 30000)
+    posedge_only = require_dict(
+        get_transitions(VCD_PATH, "tb_pmic_fsm.clk", 0, 50000, limit=50, edge="posedge"),
+        "get_transitions with edge=posedge must return a dict",
+    )
+    assert_equal(len(posedge_only["transitions"]), 3, "posedge expected 3 transitions in [0, 50000]")
+    for tr in posedge_only["transitions"]:
+        assert_equal(tr["value"], "1", "posedge transition must result in 1")
+
+    # edge="negedge": only 1->0 transitions (clk: t=0 from unknown, t=20000)
+    negedge_only = require_dict(
+        get_transitions(VCD_PATH, "tb_pmic_fsm.clk", 0, 50000, limit=50, edge="negedge"),
+        "get_transitions with edge=negedge must return a dict",
+    )
+    # t=0 is NOT a negedge (from=None), t=20000 is negedge (from=1, to=0)
+    assert_equal(len(negedge_only["transitions"]), 2, "negedge expected 2 transitions in [0, 50000]")
+    for tr in negedge_only["transitions"]:
+        assert_equal(tr["value"], "0", "negedge transition must result in 0")
+
+    # value filter: only transitions where resulting value == "1"
+    val_ones = require_dict(
+        get_transitions(VCD_PATH, "tb_pmic_fsm.clk", 0, 50000, limit=50, value="1"),
+        "get_transitions with value='1' must return a dict",
+    )
+    assert_equal(len(val_ones["transitions"]), 3, "value=1 expected 3 transitions in [0, 50000]")
+    for tr in val_ones["transitions"]:
+        assert_equal(tr["value"], "1", "value filter must return only value=1")
+
+    # edge + value combined: posedge where result is "1"
+    combined = require_dict(
+        get_transitions(VCD_PATH, "tb_pmic_fsm.clk", 0, 50000, limit=50, edge="posedge", value="1"),
+        "get_transitions with edge=posedge and value='1' must return a dict",
+    )
+    # Same result as posedge only (posedge always results in 1)
+    assert_equal(len(combined["transitions"]), 3, "combined filter expected 3 transitions")
+
+    # edge + value that yields empty result: negedge where result is "1" → impossible
+    empty_filter = require_dict(
+        get_transitions(VCD_PATH, "tb_pmic_fsm.clk", 0, 50000, limit=50, edge="negedge", value="1"),
+        "get_transitions with incompatible filter must return a dict",
+    )
+    assert_equal(empty_filter["transitions"], [], "incompatible filter must return empty list, not error")
+
+    # truncated still works after filtering
+    truncated = require_dict(
+        get_transitions(VCD_PATH, "tb_pmic_fsm.clk", 0, 50000, limit=2, edge="posedge"),
+        "get_transitions limit after filter must return a dict",
+    )
+    assert_equal(len(truncated["transitions"]), 2, "limited after filter mismatch")
+    assert_equal(truncated["truncated"], True, "truncated flag after filter mismatch")
+
+    # Parameter error: invalid edge
+    assert_error_contains(
+        lambda: get_transitions(VCD_PATH, "tb_pmic_fsm.clk", 0, 100, limit=50, edge="invalid"),
+        "Parameter error: edge must be one of ['any', 'posedge', 'negedge']",
+        "expected Parameter error for invalid edge",
+    )
+
     # ==================================================================
     # Error model: Signal error
     # ==================================================================

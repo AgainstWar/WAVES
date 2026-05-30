@@ -1,7 +1,7 @@
 # WAVES Knowledge Base
 
-**Generated:** 2026-05-27
-**Commit:** 98b77ae
+**Generated:** 2026-05-30
+**Commit:** fcdfd9a
 **Branch:** master
 
 ## OVERVIEW
@@ -13,12 +13,13 @@ WAVES (Waveform Access via Explicit Signals) is a local stdio MCP server for que
 ```
 waves/
 ├── pyproject.toml          # Package config, mcp dependency, waves console entry
-├── README.md               # Install, tools, non-goals
+├── README.md               # English: install, tools, debugging
+├── README.zh.md            # Chinese translation
 ├── src/waves/
 │   ├── __init__.py
 │   ├── vcd_parser.py       # Minimal VCD parser (scalar + vector)
-│   ├── query.py            # Signal lookup, value, transitions, window
-│   └── server.py           # FastMCP stdio server, 5 tools
+│   ├── query.py            # Signal lookup, value, transitions, window, find
+│   └── server.py           # FastMCP stdio server, 6 tools
 ├── tests/
 │   ├── fixtures/sample.vcd # Test waveform fixture (Icarus Verilog)
 │   └── test_smoke.py       # Minimal executable verification
@@ -30,25 +31,27 @@ waves/
 |------|----------|-------|
 | Add VCD format support | `src/waves/vcd_parser.py` | Only scalar/vector now |
 | Add query logic | `src/waves/query.py` | filter, limit, range, truncation |
-| Add MCP tools | `src/waves/server.py` | 5 tool decorators |
+| Add MCP tools | `src/waves/server.py` | 6 tool decorators |
 | Fix install/runtime | `pyproject.toml` | entrypoint: `waves = waves.server:main` |
 
 ## CODE MAP
 
 | Symbol | Type | Location | Role |
 |--------|------|----------|------|
-| `parse_vcd` | function | `vcd_parser.py:24` | Entry parser, returns `ParsedVCD` |
-| `list_signals` | function | `query.py:70` | Filtered signal listing |
-| `get_value` | function | `query.py:104` | At-or-before value lookup |
-| `get_transitions` | function | `query.py:137` | Inclusive range transitions |
-| `get_window` | function | `query.py:190` | Multi-signal window slice |
-| `get_info` | function | `query.py:53` | File-level metadata |
-| `wave_list_signals` | MCP tool | `server.py:44` | Delegates to `list_signals` |
-| `wave_get_value` | MCP tool | `server.py:63` | Delegates to `get_value` |
-| `wave_get_transitions` | MCP tool | `server.py:82` | Delegates to `get_transitions` |
-| `wave_get_window` | MCP tool | `server.py:109` | Delegates to `get_window` |
-| `wave_get_info` | MCP tool | `server.py:29` | Delegates to `get_info` |
-| `main` | function | `server.py:138` | Calls `mcp.run()` (stdio) |
+| `parse_vcd` | function | `vcd_parser.py:45` | Entry parser, returns `ParsedVCD` |
+| `get_info` | function | `query.py:47` | File-level metadata |
+| `list_signals` | function | `query.py:62` | Filtered signal listing |
+| `get_value` | function | `query.py:88` | At-or-before value lookup |
+| `get_transitions` | function | `query.py:194` | Inclusive range transitions |
+| `get_window` | function | `query.py:384` | Multi-signal window slice |
+| `find_transition` | function | `query.py:548` | Nearest transition before/after time |
+| `wave_get_info` | MCP tool | `server.py:30` | Delegates to `get_info` |
+| `wave_list_signals` | MCP tool | `server.py:45` | Delegates to `list_signals` |
+| `wave_get_value` | MCP tool | `server.py:64` | Delegates to `get_value` |
+| `wave_get_transitions` | MCP tool | `server.py:86` | Delegates to `get_transitions` |
+| `wave_get_window` | MCP tool | `server.py:125` | Delegates to `get_window` |
+| `wave_find_transition` | MCP tool | `server.py:180` | Delegates to `find_transition` |
+| `main` | function | `server.py:210` | Calls `mcp.run()` (stdio) |
 
 ## CONVENTIONS
 

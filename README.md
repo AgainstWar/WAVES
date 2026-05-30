@@ -2,7 +2,7 @@
 
 **WAVES**（Waveform Access via Explicit Signals）是一个基于 [Model Context Protocol (MCP)](https://modelcontextprotocol.io) 的本地 stdio 工具，用于查询 VCD（Value Change Dump）波形文件中的信号值和时序变化。
 
-> 🔧 **当前版本**：v0.1.2 — 支持信号列表、点值查询、变化记录查询、波形窗口切片和变化导航
+> 🔧 **当前版本**：v0.1.2 — 新增 value_format 值格式转换（hex/uint/sint/ascii），覆盖 wave_get_value/transitions/window 三个工具
 
 ---
 

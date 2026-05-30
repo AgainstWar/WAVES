@@ -34,6 +34,16 @@ def wave_get_info(
     """Get basic file-level information from a VCD file.
 
     Returns timescale, start/end timestamps, and signal count.
+
+    Example:
+        Input: {"vcd_path": "tests/fixtures/sample.vcd"}
+        Output: {
+            "vcd_path": "tests/fixtures/sample.vcd",
+            "timescale": "1ps",
+            "start_time": 0,
+            "end_time": 1361000,
+            "signal_count": 251,
+        }
     """
     try:
         return get_info(vcd_path=vcd_path)
@@ -53,6 +63,15 @@ def wave_list_signals(
     """List queryable signals in a VCD file.
 
     Use this to find exact hierarchical signal names before querying values or transitions.
+
+    Example:
+        Input: {"vcd_path": "tests/fixtures/sample.vcd", "filter": "clk", "limit": 5}
+        Output: {
+            "vcd_path": "tests/fixtures/sample.vcd",
+            "signal_count": 10,
+            "signals": [{"name": "tb_pmic_fsm.clk", "width": 1}],
+            "truncated": True,
+        }
     """
     try:
         return list_signals(vcd_path=vcd_path, filter=filter, limit=limit)
@@ -75,6 +94,11 @@ def wave_get_value(
     """Get one signal value at a raw VCD timestamp.
 
     The signal must exactly match a name returned by wave_list_signals.
+
+    Example:
+        Input: {"vcd_path": "tests/fixtures/sample.vcd",
+                 "signal": "tb_pmic_fsm.clk", "time": 100000}
+        Output: {"signal": "tb_pmic_fsm.clk", "time": 100000, "value": "0"}
     """
     try:
         return get_value(vcd_path=vcd_path, signal=signal, time=time, value_format=value_format)
@@ -105,6 +129,19 @@ def wave_get_transitions(
     """Get recorded signal transitions in an inclusive raw VCD time range.
 
     Can optionally filter by transition kind and resulting value.
+
+    Example:
+        Input: {"vcd_path": "tests/fixtures/sample.vcd",
+                 "signal": "tb_pmic_fsm.clk",
+                 "start_time": 0, "end_time": 200000, "edge": "posedge"}
+        Output: {
+            "signal": "tb_pmic_fsm.clk",
+            "start_time": 0,
+            "end_time": 200000,
+            "transitions": [{"time": 10000, "value": "1"}],
+            "truncated": False,
+            "value_format": "raw",
+        }
     """
     try:
         return get_transitions(
@@ -158,6 +195,27 @@ def wave_get_window(
     The window can be specified either by start/end timestamps or by a center time
     with before/after offsets.  Output can be structured (per-signal lists) or a
     time-aligned table.
+
+    Example:
+        Input: {"vcd_path": "tests/fixtures/sample.vcd",
+                 "signals": ["tb_pmic_fsm.clk", "tb_pmic_fsm.rst_n"],
+                 "start_time": 0, "end_time": 50000}
+        Output: {
+            "start_time": 0,
+            "end_time": 50000,
+            "signals": [
+                {
+                    "signal": "tb_pmic_fsm.clk",
+                    "transitions": [{"time": 0, "value": "0"}],
+                    "truncated": False,
+                },
+                {
+                    "signal": "tb_pmic_fsm.rst_n",
+                    "transitions": [],
+                    "truncated": False,
+                },
+            ],
+        }
     """
     try:
         return get_window(
@@ -194,6 +252,20 @@ def wave_find_transition(
     """Find the nearest matching transition for one VCD signal before or after a raw VCD timestamp.
 
     Can match any transition, posedge, or negedge.
+
+    Example:
+        Input: {"vcd_path": "tests/fixtures/sample.vcd",
+                 "signal": "tb_pmic_fsm.clk",
+                 "time": 5000, "direction": "next", "edge": "posedge"}
+        Output: {
+            "found": True,
+            "signal": "tb_pmic_fsm.clk",
+            "query_time": 5000,
+            "transition_time": 10000,
+            "from": "0",
+            "to": "1",
+            "edge": "posedge",
+        }
     """
     try:
         return find_transition(

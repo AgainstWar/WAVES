@@ -90,6 +90,8 @@ tests/
 └── test_smoke.py   # python tests/test_smoke.py
 ```
 
+源代码使用 [Google Style docstrings](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html) — 在 VS Code / PyCharm 中悬停即可查看 **Args**、**Returns** 和 **Example** 片段。
+
 ### Web UI 调试
 
 ```bash

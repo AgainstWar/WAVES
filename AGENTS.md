@@ -57,6 +57,16 @@ waves/
 - **Missing value**: returns `null` (Python `None`) — never invent values
 - **Signal matching**: exact hierarchical name only; no fuzzy/suffix/regex
 
+## DOCSTRINGS
+
+All public functions use **Google Style docstrings** so IDEs (VS Code, PyCharm) render structured hovers:
+
+- **Args** — parameter names, types, and constraints
+- **Returns** — output shape and key descriptions
+- **Example** — minimal input/output snippet for quick understanding
+
+When adding or modifying a public API, keep the docstring updated. The `Example` block is especially helpful for both human developers and AI agents.
+
 ## MCP DESCRIPTIONS
 
 When adding or editing `@mcp.tool()` functions:

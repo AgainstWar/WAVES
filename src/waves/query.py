@@ -47,7 +47,21 @@ def _get_signal(parsed: ParsedVCD, signal: str) -> SignalInfo:
 def get_info(vcd_path: str) -> dict[str, object]:
     """Get basic file-level information from a VCD file.
 
-    Returns dict with keys: vcd_path, timescale, start_time, end_time, signal_count.
+    Args:
+        vcd_path: Path to the VCD file.
+
+    Returns:
+        Dict with keys: vcd_path, timescale, start_time, end_time, signal_count.
+
+    Example:
+        Input: get_info("tests/fixtures/sample.vcd")
+        Output: {
+            "vcd_path": "tests/fixtures/sample.vcd",
+            "timescale": "1ps",
+            "start_time": 0,
+            "end_time": 1361000,
+            "signal_count": 251,
+        }
     """
     parsed = _load_vcd(vcd_path)
     return {
@@ -63,6 +77,23 @@ def list_signals(vcd_path: str, filter: str | None = None, limit: int = 100) -> 
     """List queryable signals in a VCD file.
 
     Use this to find exact hierarchical signal names before querying values or transitions.
+
+    Args:
+        vcd_path: Path to the VCD file.
+        filter: Optional substring filter over full signal names.
+        limit: Maximum number of records to return.
+
+    Returns:
+        Dict with keys: vcd_path, timescale, signal_count, signals, truncated.
+
+    Example:
+        Input: list_signals("tests/fixtures/sample.vcd", filter="clk", limit=5)
+        Output: {
+            "vcd_path": "tests/fixtures/sample.vcd",
+            "signal_count": 10,
+            "signals": [{"name": "tb_pmic_fsm.clk", "width": 1}],
+            "truncated": True,
+        }
     """
     if limit <= 0:
         raise WavesQueryError(f"Parameter error: limit must be greater than 0, got {limit}.")
@@ -90,7 +121,20 @@ def get_value(vcd_path: str, signal: str, time: int, value_format: str = "raw") 
 
     Uses at-or-before lookup: if no transition exists exactly at time,
     returns the most recent value at or before that timestamp.
-    value is None if the signal has no recorded value at or before time.
+
+    Args:
+        vcd_path: Path to the VCD file.
+        signal: Exact hierarchical signal name.
+        time: Raw VCD integer timestamp.
+        value_format: Optional display format: raw, bin, hex, uint, sint, or ascii.
+
+    Returns:
+        Dict with keys: signal, time, value (and value_raw / value_format when
+        value_format != "raw").
+
+    Example:
+        Input: get_value("tests/fixtures/sample.vcd", "tb_pmic_fsm.clk", 100000)
+        Output: {"signal": "tb_pmic_fsm.clk", "time": 100000, "value": "0"}
     """
     if time < 0:
         raise WavesQueryError(f"Parameter error: time must be greater than or equal to 0, got {time}.")
@@ -204,7 +248,34 @@ def get_transitions(
     """Get recorded signal transitions in an inclusive raw VCD time range.
 
     Can optionally filter by transition kind and resulting value.
-    Use limit to cap the number of returned transition records.
+
+    Args:
+        vcd_path: Path to the VCD file.
+        signal: Exact hierarchical signal name.
+        start_time: Inclusive raw VCD integer start timestamp.
+        end_time: Inclusive raw VCD integer end timestamp.
+        limit: Maximum number of records to return.
+        edge: Optional transition kind filter: any, posedge, or negedge.
+        value: Optional filter on the resulting transition value.
+        value_format: Optional display format: raw, bin, hex, uint, sint, or ascii.
+
+    Returns:
+        Dict with keys: signal, start_time, end_time, transitions, truncated,
+        value_format.
+
+    Example:
+        Input: get_transitions(
+            "tests/fixtures/sample.vcd", "tb_pmic_fsm.clk",
+            0, 200000, edge="posedge",
+        )
+        Output: {
+            "signal": "tb_pmic_fsm.clk",
+            "start_time": 0,
+            "end_time": 200000,
+            "transitions": [{"time": 10000, "value": "1"}],
+            "truncated": False,
+            "value_format": "raw",
+        }
     """
     # Validate parameters
     if limit <= 0:
@@ -396,8 +467,46 @@ def get_window(
     """Get recorded transitions for multiple VCD signals in one time window.
 
     The window can be specified either by start/end timestamps or by a center
-    time with before/after offsets.  Returns waveform facts only; it does not
-    interpret or diagnose the waveform.  Empty transitions is normal data.
+    time with before/after offsets.
+
+    Args:
+        vcd_path: Path to the VCD file.
+        signals: List of exact hierarchical signal names.
+        start_time: Inclusive raw VCD integer start timestamp.
+        end_time: Inclusive raw VCD integer end timestamp.
+        center_time: Raw VCD integer center timestamp.
+        before: Window size before center_time.
+        after: Window size after center_time.
+        limit_per_signal: Maximum transition records per signal.
+        format: Output format: "structured" (default) or "table".
+        value_format: Optional display format: raw, bin, hex, uint, sint, or ascii.
+
+    Returns:
+        Dict with keys: start_time, end_time, signals (or table / format when
+        format="table").
+
+    Example:
+        Input: get_window(
+            "tests/fixtures/sample.vcd",
+            ["tb_pmic_fsm.clk", "tb_pmic_fsm.rst_n"],
+            start_time=0, end_time=50000,
+        )
+        Output: {
+            "start_time": 0,
+            "end_time": 50000,
+            "signals": [
+                {
+                    "signal": "tb_pmic_fsm.clk",
+                    "transitions": [{"time": 0, "value": "0"}],
+                    "truncated": False,
+                },
+                {
+                    "signal": "tb_pmic_fsm.rst_n",
+                    "transitions": [],
+                    "truncated": False,
+                },
+            ],
+        }
     """
     # Resolve window from parameters
     resolved_start, resolved_end = _resolve_window(
@@ -554,9 +663,30 @@ def find_transition(
 ) -> dict[str, object]:
     """Find the nearest matching transition for one VCD signal.
 
-    direction: "next" (strictly after time) or "prev" (strictly before time).
-    edge: "any", "posedge" (0->1 single-bit), or "negedge" (1->0 single-bit).
-    Returns found=true with transition details, or found=false on empty result.
+    Args:
+        vcd_path: Path to the VCD file.
+        signal: Exact hierarchical signal name.
+        time: Raw VCD integer timestamp.
+        direction: Search direction: "next" (strictly after) or "prev" (strictly before).
+        edge: Transition kind: any, posedge, or negedge.
+
+    Returns:
+        Dict with keys: found, signal, query_time, transition_time, from, to, edge.
+
+    Example:
+        Input: find_transition(
+            "tests/fixtures/sample.vcd", "tb_pmic_fsm.clk",
+            5000, "next", "posedge",
+        )
+        Output: {
+            "found": True,
+            "signal": "tb_pmic_fsm.clk",
+            "query_time": 5000,
+            "transition_time": 10000,
+            "from": "0",
+            "to": "1",
+            "edge": "posedge",
+        }
     """
     if time < 0:
         raise WavesQueryError(

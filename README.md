@@ -90,6 +90,8 @@ tests/
 └── test_smoke.py   # python tests/test_smoke.py
 ```
 
+Source functions use [Google Style docstrings](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html) — hover in VS Code / PyCharm to see **Args**, **Returns**, and **Example** snippets.
+
 ### Web UI Debugging
 
 ```bash

@@ -45,7 +45,23 @@ class ParsedVCD:
 def parse_vcd(path: str | Path) -> ParsedVCD:
     """Parse a VCD file and return its metadata plus all signal transitions.
 
-    Raises WavesVCDError if the file is missing, unreadable, or not a valid VCD.
+    Args:
+        path: Path to the VCD file (str or Path).
+
+    Returns:
+        ParsedVCD with fields: timescale, signals, start_time, end_time.
+
+    Raises:
+        WavesVCDError: If the file is missing, unreadable, or not a valid VCD.
+
+    Example:
+        Input: parse_vcd("tests/fixtures/sample.vcd")
+        Output: ParsedVCD(
+            timescale="1ps",
+            signals={"tb_pmic_fsm.clk": SignalInfo(...)},
+            start_time=0,
+            end_time=1361000,
+        )
     """
     file_path = Path(path)
     if not file_path.exists():

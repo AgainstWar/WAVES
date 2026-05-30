@@ -2,7 +2,7 @@
 
 **WAVES**（Waveform Access via Explicit Signals）是一个基于 [Model Context Protocol (MCP)](https://modelcontextprotocol.io) 的本地 stdio 工具，用于查询 VCD（Value Change Dump）波形文件中的信号值和时序变化。
 
-> 🔧 **当前版本**：v0.1.0 — 支持信号列表、点值查询、变化记录查询、波形窗口切片和变化导航
+> 🔧 **当前版本**：v0.1.1 — 支持信号列表、点值查询、变化记录查询、波形窗口切片和变化导航
 
 ---
 
@@ -18,7 +18,7 @@ WAVES 将 VCD 波形文件封装为 MCP 工具集，让 LLM 客户端（如 Clau
 | `wave_list_signals` | 列出 VCD 中所有信号 | `vcd_path`, `filter?`, `limit?` | 信号名列表、位宽、是否截断 |
 | `wave_get_value` | 查询信号在指定时间的值 | `vcd_path`, `signal`, `time` | 信号值（at-or-before 语义） |
 | `wave_get_transitions` | 查询信号在时间段内的变化 | `vcd_path`, `signal`, `start_time`, `end_time`, `limit?`, `edge?`, `value?` | 变化记录列表（支持按边沿和值过滤） |
-| `wave_get_window` | 查询多个信号在同一窗口内的变化 | `vcd_path`, `signals`, `start_time`, `end_time`, `limit_per_signal?` | 每个信号的变化记录列表 |
+| `wave_get_window` | 查询多个信号在同一窗口内的变化 | `vcd_path`, `signals`, `start_time?`/`end_time?` 或 `center_time?`/`before?`/`after?`, `limit_per_signal?` | 每个信号的变化记录列表（支持两种窗口指定方式） |
 | `wave_find_transition` | 查找指定时间之前或之后的最近变化 | `vcd_path`, `signal`, `time`, `direction`, `edge?` | 找到时返回 `found=true` + 变化详情，未找到时返回 `found=false` |
 
 ### 核心特性
@@ -343,6 +343,27 @@ waves
 
 > `wave_get_window` 只返回结构化波形事实，不解释波形含义、不判断 bug、不生成自然语言摘要。每个 signal 独立标记 `truncated`；空 `transitions` 是正常结果，不是错误。
 
+**另一种窗口指定方式：使用中心时间点：**
+
+```json
+{
+  "vcd_path": "/path/to/fsm_norm.vcd",
+  "signals": [
+    "tb_pmic_fsm.clk",
+    "tb_pmic_fsm.rst_n",
+    "tb_pmic_fsm.current_state"
+  ],
+  "center_time": 130000,
+  "before": 30000,
+  "after": 30000,
+  "limit_per_signal": 50
+}
+```
+
+等同于 `start_time=100000`、`end_time=160000`。中心窗口模式只是一个便利语法糖，内部会转换成 `start_time` 和 `end_time`，返回结果结构不变。
+
+> `center_time`、`before`、`after` 与 `start_time`/`end_time` 互斥，不能混用。`before` 和 `after` 必须 `>= 0`，计算出的 `start_time` 不能小于 `0`。
+
 ### 查找信号变化
 
 ```json
@@ -398,7 +419,7 @@ WAVES returns errors in three stable categories. All messages are in English and
 `wave_get_window` can produce all three error categories:
 - **VCD file error** for invalid `vcd_path`
 - **Signal error** for any unknown signal in `signals`
-- **Parameter error** for invalid `start_time`/`end_time`/`limit_per_signal` or if `signals` is empty or exceeds 20 signals
+- **Parameter error** for invalid `start_time`/`end_time`/`limit_per_signal`, missing or mixed window modes, invalid `center_time`/`before`/`after`, or negative computed `start_time` in centered mode
 
 Empty results are **not** errors:
 - `wave_get_transitions` returns `"transitions": []` when no value changes exist in the requested range.

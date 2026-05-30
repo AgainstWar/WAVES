@@ -174,18 +174,84 @@ def get_transitions(
     }
 
 
+def _resolve_window(
+    start_time: int | None = None,
+    end_time: int | None = None,
+    center_time: int | None = None,
+    before: int | None = None,
+    after: int | None = None,
+) -> tuple[int, int]:
+    # Resolve window boundaries from either explicit or centered parameters.
+    # Returns (resolved_start_time, resolved_end_time).
+    # Raises WavesQueryError on invalid combinations.
+    has_explicit = start_time is not None or end_time is not None
+    has_centered = center_time is not None or before is not None or after is not None
+
+    if not has_explicit and not has_centered:
+        raise WavesQueryError(
+            "Parameter error: provide either start_time/end_time or center_time/before/after."
+        )
+    if has_explicit and has_centered:
+        raise WavesQueryError(
+            "Parameter error: start_time/end_time and center_time/before/after are mutually exclusive."
+        )
+
+    if has_explicit:
+        if start_time is None or end_time is None:
+            raise WavesQueryError(
+                "Parameter error: start_time and end_time must be provided together."
+            )
+        return (start_time, end_time)
+
+    # Centered mode
+    if center_time is None or before is None or after is None:
+        raise WavesQueryError(
+            "Parameter error: center_time, before, and after must be provided together."
+        )
+    if center_time < 0:
+        raise WavesQueryError(
+            f"Parameter error: center_time must be greater than or equal to 0, got {center_time}."
+        )
+    if before < 0:
+        raise WavesQueryError(
+            f"Parameter error: before must be greater than or equal to 0, got {before}."
+        )
+    if after < 0:
+        raise WavesQueryError(
+            f"Parameter error: after must be greater than or equal to 0, got {after}."
+        )
+
+    resolved_start = center_time - before
+    if resolved_start < 0:
+        raise WavesQueryError(
+            f"Parameter error: centered window start_time must be greater than or equal to 0, got {resolved_start}."
+        )
+    resolved_end = center_time + after
+
+    return (resolved_start, resolved_end)
+
+
 def get_window(
     vcd_path: str,
     signals: list[str],
-    start_time: int,
-    end_time: int,
+    start_time: int | None = None,
+    end_time: int | None = None,
+    center_time: int | None = None,
+    before: int | None = None,
+    after: int | None = None,
     limit_per_signal: int = 50,
 ) -> dict[str, object]:
-    """Get recorded transitions for multiple VCD signals in one inclusive time window.
+    """Get recorded transitions for multiple VCD signals in one time window.
 
-    Returns waveform facts only; it does not interpret or diagnose the waveform.
-    Empty transitions is normal data, not an error.
+    The window can be specified either by start/end timestamps or by a center
+    time with before/after offsets.  Returns waveform facts only; it does not
+    interpret or diagnose the waveform.  Empty transitions is normal data.
     """
+    # Resolve window from parameters
+    resolved_start, resolved_end = _resolve_window(
+        start_time, end_time, center_time, before, after
+    )
+
     # Validate signals list
     if not signals:
         raise WavesQueryError("Parameter error: signals must not be empty.")
@@ -206,17 +272,17 @@ def get_window(
         raise WavesQueryError(
             f"Parameter error: limit_per_signal must be greater than 0, got {limit_per_signal}."
         )
-    if start_time < 0:
+    if resolved_start < 0:
         raise WavesQueryError(
-            f"Parameter error: start_time must be greater than or equal to 0, got {start_time}."
+            f"Parameter error: start_time must be greater than or equal to 0, got {resolved_start}."
         )
-    if end_time < 0:
+    if resolved_end < 0:
         raise WavesQueryError(
-            f"Parameter error: end_time must be greater than or equal to 0, got {end_time}."
+            f"Parameter error: end_time must be greater than or equal to 0, got {resolved_end}."
         )
-    if start_time > end_time:
+    if resolved_start > resolved_end:
         raise WavesQueryError(
-            f"Parameter error: start_time must be less than or equal to end_time, got start_time={start_time}, end_time={end_time}."
+            f"Parameter error: start_time must be less than or equal to end_time, got start_time={resolved_start}, end_time={resolved_end}."
         )
 
     # Single VCD parse, then loop over requested signals
@@ -228,7 +294,7 @@ def get_window(
         transitions = [
             {"time": transition_time, "value": transition_value}
             for transition_time, transition_value in info.transitions
-            if start_time <= transition_time <= end_time
+            if resolved_start <= transition_time <= resolved_end
         ]
         transition_count = len(transitions)
         result_signals.append({
@@ -238,8 +304,8 @@ def get_window(
         })
 
     return {
-        "start_time": start_time,
-        "end_time": end_time,
+        "start_time": resolved_start,
+        "end_time": resolved_end,
         "signals": result_signals,
     }
 

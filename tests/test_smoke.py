@@ -316,6 +316,87 @@ def main_smoke() -> None:
         "expected Signal error for unknown signal in window",
     )
 
+    # Centered window mode: center_time=25000, before=25000, after=25000
+    # → start=0, end=50000. Signals and results should match explicit mode above.
+    centered = require_dict(
+        get_window(
+            VCD_PATH,
+            ["tb_pmic_fsm.clk", "tb_pmic_fsm.rst_n", "tb_pmic_fsm.current_state [3:0]"],
+            center_time=25000,
+            before=25000,
+            after=25000,
+            limit_per_signal=50,
+        ),
+        "centered get_window must return a dict",
+    )
+    assert_equal(centered["start_time"], 0, "centered start_time mismatch")
+    assert_equal(centered["end_time"], 50000, "centered end_time mismatch")
+    assert_equal(len(centered["signals"]), 3, "centered signals length mismatch")
+
+    # Centered mode: center_time=0, before=0, after=100 → start=0, end=100
+    centered2 = require_dict(
+        get_window(VCD_PATH, ["tb_pmic_fsm.clk"], center_time=0, before=0, after=100, limit_per_signal=50),
+        "centered get_window must return a dict",
+    )
+    assert_equal(centered2["start_time"], 0, "centered2 start_time mismatch")
+    assert_equal(centered2["end_time"], 100, "centered2 end_time mismatch")
+
+    # Both modes mixed: should error
+    assert_error_contains(
+        lambda: get_window(VCD_PATH, ["tb_pmic_fsm.clk"], start_time=0, end_time=100, center_time=50, before=50, after=50, limit_per_signal=50),
+        "Parameter error: start_time/end_time and center_time/before/after are mutually exclusive",
+        "expected error for mixed modes",
+    )
+
+    # No mode provided
+    assert_error_contains(
+        lambda: get_window(VCD_PATH, ["tb_pmic_fsm.clk"], limit_per_signal=50),
+        "Parameter error: provide either start_time/end_time or center_time/before/after",
+        "expected error for no mode",
+    )
+
+    # Explicit incomplete: only start_time
+    assert_error_contains(
+        lambda: get_window(VCD_PATH, ["tb_pmic_fsm.clk"], start_time=0, limit_per_signal=50),
+        "Parameter error: start_time and end_time must be provided together",
+        "expected error for partial explicit window",
+    )
+
+    # Centered incomplete: center_time without before
+    assert_error_contains(
+        lambda: get_window(VCD_PATH, ["tb_pmic_fsm.clk"], center_time=100, after=50, limit_per_signal=50),
+        "Parameter error: center_time, before, and after must be provided together",
+        "expected error for partial centered window",
+    )
+
+    # before < 0
+    assert_error_contains(
+        lambda: get_window(VCD_PATH, ["tb_pmic_fsm.clk"], center_time=100, before=-1, after=50, limit_per_signal=50),
+        "Parameter error: before must be greater than or equal to 0",
+        "expected error for negative before",
+    )
+
+    # after < 0
+    assert_error_contains(
+        lambda: get_window(VCD_PATH, ["tb_pmic_fsm.clk"], center_time=100, before=50, after=-1, limit_per_signal=50),
+        "Parameter error: after must be greater than or equal to 0",
+        "expected error for negative after",
+    )
+
+    # center_time < 0
+    assert_error_contains(
+        lambda: get_window(VCD_PATH, ["tb_pmic_fsm.clk"], center_time=-1, before=50, after=50, limit_per_signal=50),
+        "Parameter error: center_time must be greater than or equal to 0",
+        "expected error for negative center_time",
+    )
+
+    # Centered mode: start_time would be < 0
+    assert_error_contains(
+        lambda: get_window(VCD_PATH, ["tb_pmic_fsm.clk"], center_time=10, before=100, after=50, limit_per_signal=50),
+        "Parameter error: centered window start_time must be greater than or equal to 0",
+        "expected error for negative centered start_time",
+    )
+
     # ==================================================================
     # wave_find_transition
     # ==================================================================

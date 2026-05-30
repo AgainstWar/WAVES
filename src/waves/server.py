@@ -17,7 +17,7 @@ from waves.query import WavesQueryError, find_transition, get_info, get_transiti
 
 # FastMCP application instance (stdio transport only).
 mcp = FastMCP("WAVES")
-mcp._mcp_server.version = "0.1.0"
+mcp._mcp_server.version = "0.1.1"
 
 
 def _tool_error(exc: WavesQueryError) -> ToolError:
@@ -120,16 +120,30 @@ def wave_get_window(
     signals: Annotated[
         list[str], Field(description="Exact hierarchical signal names returned by wave_list_signals.")
     ],
-    start_time: Annotated[int, Field(description="Inclusive raw VCD integer start timestamp.")],
-    end_time: Annotated[int, Field(description="Inclusive raw VCD integer end timestamp.")],
+    start_time: Annotated[
+        int | None, Field(description="Inclusive raw VCD integer start timestamp.")
+    ] = None,
+    end_time: Annotated[
+        int | None, Field(description="Inclusive raw VCD integer end timestamp.")
+    ] = None,
+    center_time: Annotated[
+        int | None, Field(description="Raw VCD integer center timestamp.")
+    ] = None,
+    before: Annotated[
+        int | None, Field(description="Window size before center_time.")
+    ] = None,
+    after: Annotated[
+        int | None, Field(description="Window size after center_time.")
+    ] = None,
     limit_per_signal: Annotated[
         int, Field(description="Maximum transition records to return per signal.")
     ] = 50,
 ) -> dict:
     # MCP tool description (sent to LLM client via tools/list)
-    """Get recorded transitions for multiple VCD signals in one inclusive time window.
+    """Get recorded transitions for multiple VCD signals in one time window.
 
-    Returns waveform facts only; it does not interpret or diagnose the waveform.
+    The window can be specified either by start/end timestamps or by a center time
+    with before/after offsets.
     """
     try:
         return get_window(
@@ -137,6 +151,9 @@ def wave_get_window(
             signals=signals,
             start_time=start_time,
             end_time=end_time,
+            center_time=center_time,
+            before=before,
+            after=after,
             limit_per_signal=limit_per_signal,
         )
     except WavesQueryError as exc:

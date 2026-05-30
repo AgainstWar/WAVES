@@ -39,118 +39,37 @@ WAVES exposes 6 MCP tools covering the workflow from browsing signals to queryin
 
 Typical workflow: use `wave_list_signals` to discover exact signal names, then query with `wave_get_value`, `wave_get_transitions`, or `wave_get_window`.
 
-### Example
+### Minimal Example
 
-Using `tests/fixtures/sample.vcd` (Icarus Verilog):  
+Query `tb_pmic_fsm.clk` in `tests/fixtures/sample.vcd`:
 
-**1. Inspect the file**
-
-Input: `wave_get_info` with `{"vcd_path": "tests/fixtures/sample.vcd"}`
-
-Output:
+**Input** (`wave_get_value`):
 ```json
-{
-  "vcd_path": "tests/fixtures/sample.vcd",
-  "timescale": "1ps",
-  "start_time": 0,
-  "end_time": 1361000,
-  "signal_count": 251
-}
+{"vcd_path": "tests/fixtures/sample.vcd", "signal": "tb_pmic_fsm.clk", "time": 100000}
 ```
 
-**2. List signals**
-
-Input: `wave_list_signals` with `{"vcd_path": "tests/fixtures/sample.vcd", "filter": "clk", "limit": 5}`
-
-Output:
+**Output**:
 ```json
-{
-  "vcd_path": "tests/fixtures/sample.vcd",
-  "signal_count": 10,
-  "signals": [
-    {"name": "tb_pmic_fsm.clk", "width": 1}
-  ],
-  "truncated": true
-}
+{"signal": "tb_pmic_fsm.clk", "time": 100000, "value": "0"}
 ```
 
-**3. Query a value**
+> `value` uses at-or-before semantics: if no transition exists exactly at `time`, returns the most recent value at or before that timestamp. `null` means no prior value is recorded.
 
-Input: `wave_get_value` with `{"vcd_path": "tests/fixtures/sample.vcd", "signal": "tb_pmic_fsm.clk", "time": 100000}`
+Query transitions in a time range with edge filter:
 
-Output:
+**Input** (`wave_get_transitions`):
 ```json
-{
-  "signal": "tb_pmic_fsm.clk",
-  "time": 100000,
-  "value": "0"
-}
+{"vcd_path": "tests/fixtures/sample.vcd", "signal": "tb_pmic_fsm.clk", "start_time": 0, "end_time": 200000, "edge": "posedge"}
 ```
 
-> **at-or-before semantics**: if no transition exists exactly at `time=100000`, returns the most recent value at or before that timestamp.
-
-**4. Query transitions**
-
-Input: `wave_get_transitions` with `{"vcd_path": "tests/fixtures/sample.vcd", "signal": "tb_pmic_fsm.clk", "start_time": 0, "end_time": 200000, "limit": 10}`
-
-Output:
+**Output**:
 ```json
 {
   "signal": "tb_pmic_fsm.clk",
   "start_time": 0,
   "end_time": 200000,
-  "transitions": [
-    {"time": 0, "value": "0"},
-    {"time": 10000, "value": "1"},
-    {"time": 20000, "value": "0"}
-  ],
-  "truncated": false,
-  "value_format": "raw"
-}
-```
-
-**5. Filter by edge**
-
-Input: `wave_get_transitions` with `{"vcd_path": "tests/fixtures/sample.vcd", "signal": "tb_pmic_fsm.clk", "start_time": 0, "end_time": 200000, "edge": "posedge"}`
-
-Output retains only 0→1 transitions:
-```json
-{
-  "signal": "tb_pmic_fsm.clk",
-  "start_time": 0,
-  "end_time": 200000,
-  "transitions": [
-    {"time": 10000, "value": "1"}
-  ],
+  "transitions": [{"time": 10000, "value": "1"}],
   "truncated": false
-}
-```
-
-**6. Query multiple signals in a window**
-
-Input: `wave_get_window` with `{"vcd_path": "tests/fixtures/sample.vcd", "signals": ["tb_pmic_fsm.clk", "tb_pmic_fsm.rst_n"], "start_time": 0, "end_time": 50000, "limit_per_signal": 10}`
-
-Output:
-```json
-{
-  "start_time": 0,
-  "end_time": 50000,
-  "signals": [
-    {
-      "signal": "tb_pmic_fsm.clk",
-      "transitions": [
-        {"time": 0, "value": "0"},
-        {"time": 10000, "value": "1"},
-        {"time": 20000, "value": "0"}
-      ],
-      "truncated": false
-    },
-    {
-      "signal": "tb_pmic_fsm.rst_n",
-      "transitions": [],
-      "truncated": false
-    }
-  ]
 }
 ```
 

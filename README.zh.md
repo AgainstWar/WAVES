@@ -39,118 +39,37 @@ WAVES 提供 6 个 MCP 工具，覆盖从浏览信号到查询值和跳变的完
 
 典型工作流：先用 `wave_list_signals` 发现精确信号名，再用 `wave_get_value`、`wave_get_transitions` 或 `wave_get_window` 查询。
 
-### 示例
+### 最小示例
 
-使用 `tests/fixtures/sample.vcd`（Icarus Verilog）：
+查询 `tests/fixtures/sample.vcd` 中的 `tb_pmic_fsm.clk`：
 
-**1. 查看文件信息**
-
-输入：`wave_get_info`，参数 `{"vcd_path": "tests/fixtures/sample.vcd"}`
-
-输出：
+**输入**（`wave_get_value`）：
 ```json
-{
-  "vcd_path": "tests/fixtures/sample.vcd",
-  "timescale": "1ps",
-  "start_time": 0,
-  "end_time": 1361000,
-  "signal_count": 251
-}
+{"vcd_path": "tests/fixtures/sample.vcd", "signal": "tb_pmic_fsm.clk", "time": 100000}
 ```
 
-**2. 列出信号**
-
-输入：`wave_list_signals`，参数 `{"vcd_path": "tests/fixtures/sample.vcd", "filter": "clk", "limit": 5}`
-
-输出：
+**输出**：
 ```json
-{
-  "vcd_path": "tests/fixtures/sample.vcd",
-  "signal_count": 10,
-  "signals": [
-    {"name": "tb_pmic_fsm.clk", "width": 1}
-  ],
-  "truncated": true
-}
+{"signal": "tb_pmic_fsm.clk", "time": 100000, "value": "0"}
 ```
 
-**3. 查询信号值**
+> `value` 使用 at-or-before 语义：若 `time` 没有确切跳变记录，则返回该时间戳处或之前的最近值。`null` 表示此前没有记录值。
 
-输入：`wave_get_value`，参数 `{"vcd_path": "tests/fixtures/sample.vcd", "signal": "tb_pmic_fsm.clk", "time": 100000}`
+查询时间段内的跳变并过滤边沿：
 
-输出：
+**输入**（`wave_get_transitions`）：
 ```json
-{
-  "signal": "tb_pmic_fsm.clk",
-  "time": 100000,
-  "value": "0"
-}
+{"vcd_path": "tests/fixtures/sample.vcd", "signal": "tb_pmic_fsm.clk", "start_time": 0, "end_time": 200000, "edge": "posedge"}
 ```
 
-> **at-or-before 语义**：若 `time=100000` 没有确切跳变记录，则返回该时间戳处或之前的最近值。
-
-**4. 查询跳变**
-
-输入：`wave_get_transitions`，参数 `{"vcd_path": "tests/fixtures/sample.vcd", "signal": "tb_pmic_fsm.clk", "start_time": 0, "end_time": 200000, "limit": 10}`
-
-输出：
+**输出**：
 ```json
 {
   "signal": "tb_pmic_fsm.clk",
   "start_time": 0,
   "end_time": 200000,
-  "transitions": [
-    {"time": 0, "value": "0"},
-    {"time": 10000, "value": "1"},
-    {"time": 20000, "value": "0"}
-  ],
-  "truncated": false,
-  "value_format": "raw"
-}
-```
-
-**5. 按边沿过滤**
-
-输入：`wave_get_transitions`，参数 `{"vcd_path": "tests/fixtures/sample.vcd", "signal": "tb_pmic_fsm.clk", "start_time": 0, "end_time": 200000, "edge": "posedge"}`
-
-输出仅保留 0→1 的跳变：
-```json
-{
-  "signal": "tb_pmic_fsm.clk",
-  "start_time": 0,
-  "end_time": 200000,
-  "transitions": [
-    {"time": 10000, "value": "1"}
-  ],
+  "transitions": [{"time": 10000, "value": "1"}],
   "truncated": false
-}
-```
-
-**6. 查询多个信号在同一窗口内**
-
-输入：`wave_get_window`，参数 `{"vcd_path": "tests/fixtures/sample.vcd", "signals": ["tb_pmic_fsm.clk", "tb_pmic_fsm.rst_n"], "start_time": 0, "end_time": 50000, "limit_per_signal": 10}`
-
-输出：
-```json
-{
-  "start_time": 0,
-  "end_time": 50000,
-  "signals": [
-    {
-      "signal": "tb_pmic_fsm.clk",
-      "transitions": [
-        {"time": 0, "value": "0"},
-        {"time": 10000, "value": "1"},
-        {"time": 20000, "value": "0"}
-      ],
-      "truncated": false
-    },
-    {
-      "signal": "tb_pmic_fsm.rst_n",
-      "transitions": [],
-      "truncated": false
-    }
-  ]
 }
 ```
 

@@ -85,7 +85,7 @@ def list_signals(vcd_path: str, filter: str | None = None, limit: int = 100) -> 
     }
 
 
-def get_value(vcd_path: str, signal: str, time: int) -> dict[str, object]:
+def get_value(vcd_path: str, signal: str, time: int, value_format: str = "raw") -> dict[str, object]:
     """Get one signal value at a raw VCD timestamp.
 
     Uses at-or-before lookup: if no transition exists exactly at time,
@@ -94,19 +94,31 @@ def get_value(vcd_path: str, signal: str, time: int) -> dict[str, object]:
     """
     if time < 0:
         raise WavesQueryError(f"Parameter error: time must be greater than or equal to 0, got {time}.")
+    _validate_value_format(value_format)
 
     parsed = _load_vcd(vcd_path)
     info = _get_signal(parsed, signal)
 
     # at-or-before scan
-    value = None
+    raw_val: str | None = None
     for transition_time, transition_value in info.transitions:
         if transition_time <= time:
-            value = transition_value
+            raw_val = transition_value
         else:
             break
 
-    return {"signal": signal, "time": time, "value": value}
+    formatted_val, raw_val_out = _format_value(raw_val, info.width, value_format)
+
+    if value_format == "raw":
+        return {"signal": signal, "time": time, "value": raw_val}
+
+    return {
+        "signal": signal,
+        "time": time,
+        "value": formatted_val,
+        "value_raw": raw_val_out,
+        "value_format": value_format,
+    }
 
 
 def _match_value(val: str, target: str | None) -> bool:
@@ -117,6 +129,68 @@ def _match_value(val: str, target: str | None) -> bool:
     return val == target
 
 
+def _format_value(
+    raw_value: str | None,
+    width: int,
+    value_format: str,
+) -> tuple[str | None, str | None]:
+    # Format a raw VCD value according to value_format.
+    # Returns (formatted_value, raw_value).
+    if raw_value is None:
+        return (None, None)
+
+    if value_format in ("raw", "bin"):
+        return (raw_value, raw_value)
+
+    # hex/uint/sint: only convert pure 0/1 strings
+    is_pure = all(c in "01" for c in raw_value)
+
+    if value_format == "hex":
+        if not is_pure:
+            return (raw_value, raw_value)
+        padded = raw_value.zfill((len(raw_value) + 3) // 4 * 4)
+        return (f"0x{int(padded, 2):x}", raw_value)
+
+    if value_format == "uint":
+        if not is_pure:
+            return (raw_value, raw_value)
+        return (str(int(raw_value, 2)), raw_value)
+
+    if value_format == "sint":
+        if not is_pure:
+            return (raw_value, raw_value)
+        bits = len(raw_value)
+        val = int(raw_value, 2)
+        if bits > 0 and val >= (1 << (bits - 1)):
+            val -= 1 << bits
+        return (str(val), raw_value)
+
+    if value_format == "ascii":
+        if width < 8 or width % 8 != 0:
+            raise WavesQueryError(
+                f"Parameter error: ascii format requires bitvector width divisible by 8, got width={width}."
+            )
+        if not is_pure:
+            raise WavesQueryError(
+                "Parameter error: ascii format requires values containing only 0 or 1."
+            )
+        chars: list[str] = []
+        for i in range(0, len(raw_value), 8):
+            chars.append(chr(int(raw_value[i:i + 8], 2)))
+        return ("".join(chars), raw_value)
+
+    # Should not reach here (caller validates value_format)
+    return (raw_value, raw_value)
+
+
+def _validate_value_format(value_format: str) -> None:
+    VALID_FORMATS = {"raw", "bin", "hex", "uint", "sint", "ascii"}
+    if value_format not in VALID_FORMATS:
+        raise WavesQueryError(
+            f"Parameter error: value_format must be one of {sorted(VALID_FORMATS)}, got {value_format!r}."
+        )
+
+
 def get_transitions(
     vcd_path: str,
     signal: str,
@@ -125,6 +199,7 @@ def get_transitions(
     limit: int = 50,
     edge: str = "any",
     value: str | None = None,
+    value_format: str = "raw",
 ) -> dict[str, object]:
     """Get recorded signal transitions in an inclusive raw VCD time range.
 
@@ -148,29 +223,39 @@ def get_transitions(
         )
     if value is not None and not isinstance(value, str):
         raise WavesQueryError("Parameter error: value must be a string if provided.")
+    _validate_value_format(value_format)
 
     parsed = _load_vcd(vcd_path)
     info = _get_signal(parsed, signal)
 
     # Filter by: time window -> edge -> value -> limit
-    filtered: list[dict[str, object]] = []
+    filtered_raw: list[tuple[int, str]] = []
     prev_val: str | None = None
     for transition_time, transition_value in info.transitions:
         in_window = start_time <= transition_time <= end_time
 
         if in_window and _matches_edge(prev_val, transition_value, edge) and _match_value(transition_value, value):
-            filtered.append({"time": transition_time, "value": transition_value})
+            filtered_raw.append((transition_time, transition_value))
 
         prev_val = transition_value
 
-    transition_count = len(filtered)
+    transition_count = len(filtered_raw)
+
+    if value_format == "raw":
+        transitions = [{"time": t, "value": v} for t, v in filtered_raw[:limit]]
+    else:
+        transitions = []
+        for t, v in filtered_raw[:limit]:
+            fmt, _ = _format_value(v, info.width, value_format)
+            transitions.append({"time": t, "value": fmt, "value_raw": v})
 
     return {
         "signal": signal,
         "start_time": start_time,
         "end_time": end_time,
-        "transitions": filtered[:limit],
+        "transitions": transitions,
         "truncated": transition_count > limit,
+        "value_format": value_format,
     }
 
 
@@ -231,6 +316,71 @@ def _resolve_window(
     return (resolved_start, resolved_end)
 
 
+def _build_window_table(
+    signal_transitions: list[list[tuple[int, str]]],
+    signal_names: list[str],
+    resolved_start: int,
+    resolved_end: int,
+    value_format: str = "raw",
+    signal_widths: list[int] | None = None,
+) -> str:
+    # Build a text table from per-signal transition data.
+    #
+    # Collects all unique times from all signals, then for each time
+    # computes each signal's at-or-before value.  Values with no known
+    # prior transition are shown as "null".
+    if not signal_transitions:
+        return "time\n"
+
+    # Collect all unique times from all signals plus window bounds
+    all_times: set[int] = {resolved_start, resolved_end}
+    for sig_tr in signal_transitions:
+        for t, _ in sig_tr:
+            all_times.add(t)
+    sorted_times = sorted(all_times)
+
+    # Compute at-or-before value for each signal at each sorted time
+    current_values: list[str | None] = [None] * len(signal_names)
+    tr_idx: list[int] = [0] * len(signal_names)
+
+    # Pre-format values if value_format != raw
+    def val_display(raw: str | None, sig_idx: int) -> str:
+        if raw is None:
+            return "null"
+        if value_format == "raw":
+            return raw
+        w = signal_widths[sig_idx] if signal_widths else len(raw)
+        fmt, _ = _format_value(raw, w, value_format)
+        return fmt if fmt is not None else "null"
+
+    str_rows: list[list[str]] = [["time"] + list(signal_names)]
+    for t in sorted_times:
+        for i, sig_tr in enumerate(signal_transitions):
+            while tr_idx[i] < len(sig_tr) and sig_tr[tr_idx[i]][0] <= t:
+                current_values[i] = sig_tr[tr_idx[i]][1]
+                tr_idx[i] += 1
+        row = [str(t)] + [
+            val_display(v, i) for i, v in enumerate(current_values)
+        ]
+        str_rows.append(row)
+
+    # Calculate column widths
+    col_count = len(str_rows[0])
+    widths = [
+        max(len(str_rows[r][c]) for r in range(len(str_rows)))
+        for c in range(col_count)
+    ]
+
+    # Build formatted string
+    sep = " | "
+    lines: list[str] = []
+    lines.append(sep.join(hdr.ljust(w) for hdr, w in zip(str_rows[0], widths)))
+    lines.append("-+-".join("-" * w for w in widths))
+    for row in str_rows[1:]:
+        lines.append(sep.join(val.ljust(w) for val, w in zip(row, widths)))
+    return "\n".join(lines)
+
+
 def get_window(
     vcd_path: str,
     signals: list[str],
@@ -240,6 +390,8 @@ def get_window(
     before: int | None = None,
     after: int | None = None,
     limit_per_signal: int = 50,
+    format: str = "structured",
+    value_format: str = "raw",
 ) -> dict[str, object]:
     """Get recorded transitions for multiple VCD signals in one time window.
 
@@ -285,28 +437,69 @@ def get_window(
             f"Parameter error: start_time must be less than or equal to end_time, got start_time={resolved_start}, end_time={resolved_end}."
         )
 
-    # Single VCD parse, then loop over requested signals
+    # Validate format parameter
+    if format not in ("structured", "table"):
+        raise WavesQueryError(
+            f"Parameter error: format must be one of ['structured', 'table'], got {format!r}."
+        )
+    _validate_value_format(value_format)
+
+    # Single VCD parse, then collect transitions per signal
     parsed = _load_vcd(vcd_path)
-    result_signals = []
+    all_signal_transitions: list[list[tuple[int, str]]] = []
+    signal_names: list[str] = []
+    any_truncated = False
 
     for signal in signals:
         info = _get_signal(parsed, signal)
-        transitions = [
-            {"time": transition_time, "value": transition_value}
+        window_tr: list[tuple[int, str]] = [
+            (transition_time, transition_value)
             for transition_time, transition_value in info.transitions
             if resolved_start <= transition_time <= resolved_end
         ]
-        transition_count = len(transitions)
-        result_signals.append({
-            "signal": signal,
-            "transitions": transitions[:limit_per_signal],
-            "truncated": transition_count > limit_per_signal,
-        })
+        all_signal_transitions.append(window_tr)
+        signal_names.append(signal)
+        if len(window_tr) > limit_per_signal:
+            any_truncated = True
 
+    if format == "structured":
+        # Build the standard per-signal result
+        result_signals: list[dict[str, object]] = []
+        for i, signal in enumerate(signals):
+            tr = all_signal_transitions[i]
+            limited = tr[:limit_per_signal]
+            if value_format == "raw":
+                trans_list = [{"time": t, "value": v} for t, v in limited]
+            else:
+                width = parsed.signals[signal].width
+                trans_list = []
+                for t, v in limited:
+                    fmt, _ = _format_value(v, width, value_format)
+                    trans_list.append({"time": t, "value": fmt, "value_raw": v})
+            result_signals.append({
+                "signal": signal,
+                "transitions": trans_list,
+                "truncated": len(tr) > limit_per_signal,
+            })
+        return {
+            "start_time": resolved_start,
+            "end_time": resolved_end,
+            "signals": result_signals,
+            "value_format": value_format,
+        }
+
+    # format == "table": build table view from all collected transitions
+    table_str = _build_window_table(
+        all_signal_transitions, signal_names, resolved_start, resolved_end,
+        value_format=value_format,
+        signal_widths=[parsed.signals[s].width for s in signals],
+    )
     return {
         "start_time": resolved_start,
         "end_time": resolved_end,
-        "signals": result_signals,
+        "format": "table",
+        "table": table_str,
+        "truncated": any_truncated,
     }
 
 

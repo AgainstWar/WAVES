@@ -397,6 +397,40 @@ def main_smoke() -> None:
         "expected error for negative centered start_time",
     )
 
+    # format="structured" yields same shape as default
+    structured = require_dict(
+        get_window(VCD_PATH, ["tb_pmic_fsm.clk"], 0, 50000, limit_per_signal=50, format="structured"),
+        "get_window structured format must return a dict",
+    )
+    assert_equal(structured["start_time"], 0, "structured start_time mismatch")
+    assert "signals" in structured, "structured must have signals key"
+
+    # format="table" returns table string
+    table_result = require_dict(
+        get_window(VCD_PATH, ["tb_pmic_fsm.clk"], 0, 50000, limit_per_signal=50, format="table"),
+        "get_window table format must return a dict",
+    )
+    assert_equal(table_result["format"], "table", "table format field mismatch")
+    assert isinstance(table_result["table"], str), "table field must be a string"
+    assert "time" in table_result["table"], "table header must contain 'time'"
+    assert "tb_pmic_fsm.clk" in table_result["table"], "table header must contain signal name"
+    assert isinstance(table_result["truncated"], bool), "table truncated field mismatch"
+
+    # table with empty transitions still has headers
+    empty_table = require_dict(
+        get_window(VCD_PATH, ["tb_pmic_fsm.clk"], 0, 0, limit_per_signal=50, format="table"),
+        "get_window table format empty must return a dict",
+    )
+    assert_equal(empty_table["format"], "table", "empty table format field mismatch")
+    assert isinstance(empty_table["table"], str), "empty table field must be a string"
+
+    # Invalid format
+    assert_error_contains(
+        lambda: get_window(VCD_PATH, ["tb_pmic_fsm.clk"], 0, 100, limit_per_signal=50, format="invalid"),
+        "Parameter error: format must be one of ['structured', 'table']",
+        "expected Parameter error for invalid format",
+    )
+
     # ==================================================================
     # wave_find_transition
     # ==================================================================
@@ -519,6 +553,132 @@ def main_smoke() -> None:
         "Signal error: signal not found: tb_pmic_fsm.nonexistent",
         "expected Signal error for unknown signal",
     )
+
+    # ==================================================================
+    # value_format — uses dedicated values.vcd fixture
+    # ==================================================================
+    VALUES = "tests/fixtures/values.vcd"
+
+    # raw (default): value field is the raw VCD string
+    v_raw = require_dict(get_value(VALUES, "top.data [7:0]", 10), "get_value raw must return dict")
+    assert_equal(v_raw["value"], "11111111", "raw value mismatch")
+    # value_format=raw explicitly
+    v_raw2 = require_dict(
+        get_value(VALUES, "top.data [7:0]", 10, value_format="raw"),
+        "get_value raw explicit must return dict",
+    )
+    assert_equal(v_raw2["value"], "11111111", "raw explicit value mismatch")
+
+    # bin
+    v_bin = require_dict(
+        get_value(VALUES, "top.data [7:0]", 10, value_format="bin"),
+        "get_value bin must return dict",
+    )
+    assert_equal(v_bin["value"], "11111111", "bin value mismatch")
+    assert_equal(v_bin["value_format"], "bin", "bin format mismatch")
+
+    # hex: 11111111 -> 0xff, 00000000 -> 0x0, 01000001 -> 0x41
+    v_hex = require_dict(
+        get_value(VALUES, "top.data [7:0]", 10, value_format="hex"),
+        "get_value hex must return dict",
+    )
+    assert_equal(v_hex["value"], "0xff", "hex ff mismatch")
+    v_hex0 = require_dict(
+        get_value(VALUES, "top.data [7:0]", 0, value_format="hex"),
+        "get_value hex 0 must return dict",
+    )
+    assert_equal(v_hex0["value"], "0x0", "hex 0 mismatch")
+    v_hex41 = require_dict(
+        get_value(VALUES, "top.data [7:0]", 20, value_format="hex"),
+        "get_value hex 41 must return dict",
+    )
+    assert_equal(v_hex41["value"], "0x41", "hex 41 mismatch")
+
+    # uint: 00000000 -> 0, 11111111 -> 255, 00000001 -> 1
+    v_uint = require_dict(
+        get_value(VALUES, "top.data [7:0]", 10, value_format="uint"),
+        "get_value uint must return dict",
+    )
+    assert_equal(v_uint["value"], "255", "uint 255 mismatch")
+    v_uint1 = require_dict(
+        get_value(VALUES, "top.data [7:0]", 30, value_format="uint"),
+        "get_value uint 1 must return dict",
+    )
+    assert_equal(v_uint1["value"], "1", "uint 1 mismatch")
+
+    # sint: 00000000 -> 0, 11111111 -> -1, 00000001 -> 1
+    v_sint = require_dict(
+        get_value(VALUES, "top.data [7:0]", 10, value_format="sint"),
+        "get_value sint must return dict",
+    )
+    assert_equal(v_sint["value"], "-1", "sint -1 mismatch")
+    v_sint0 = require_dict(
+        get_value(VALUES, "top.data [7:0]", 0, value_format="sint"),
+        "get_value sint 0 must return dict",
+    )
+    assert_equal(v_sint0["value"], "0", "sint 0 mismatch")
+
+    # ascii: 01000001 (65) -> "A"
+    v_ascii = require_dict(
+        get_value(VALUES, "top.data [7:0]", 20, value_format="ascii"),
+        "get_value ascii must return dict",
+    )
+    assert_equal(v_ascii["value"], "A", "ascii A mismatch")
+
+    # value_raw always available when format != raw
+    assert_equal(v_hex["value_raw"], "11111111", "hex value_raw mismatch")
+    assert_equal(v_ascii["value_raw"], "01000001", "ascii value_raw mismatch")
+
+    # ascii with x/z -> Parameter error
+    assert_error_contains(
+        lambda: get_value(VALUES, "top.xz_signal [7:0]", 0, value_format="ascii"),
+        "Parameter error: ascii format requires values containing only 0 or 1",
+        "expected error for ascii with x",
+    )
+
+    # ascii with width not multiple of 8 -> Parameter error
+    assert_error_contains(
+        lambda: get_value(VALUES, "top.nibble [3:0]", 10, value_format="ascii"),
+        "Parameter error: ascii format requires bitvector width divisible by 8",
+        "expected error for ascii with width 4",
+    )
+
+    # hex/uint/sint with x/z: preserve raw, don't error
+    v_xz_hex = require_dict(
+        get_value(VALUES, "top.xz_signal [7:0]", 0, value_format="hex"),
+        "get_value hex with x must return dict",
+    )
+    assert_equal(v_xz_hex["value"], "xxxxxxxx", "hex with x should preserve raw")
+
+    # Invalid value_format
+    assert_error_contains(
+        lambda: get_value(VALUES, "top.data [7:0]", 10, value_format="invalid"),
+        "Parameter error: value_format must be one of",
+        "expected Parameter error for invalid value_format",
+    )
+
+    # get_transitions with value_format: transitions get value/value_raw
+    tr_hex = require_dict(
+        get_transitions(VALUES, "top.data [7:0]", 0, 50, limit=10, value_format="hex"),
+        "get_transitions hex must return dict",
+    )
+    assert_equal(tr_hex["value_format"], "hex", "transitions value_format field")
+    for tr in tr_hex["transitions"]:
+        assert "value" in tr, "transition must have value"
+        assert "value_raw" in tr, "transition must have value_raw"
+        assert isinstance(tr["value"], str), "hex transition value must be str"
+
+    # get_window with value_format: each signal's transitions get formatted
+    win_hex = require_dict(
+        get_window(VALUES, ["top.data [7:0]", "top.clk"], 0, 50, limit_per_signal=10, value_format="hex"),
+        "get_window hex must return dict",
+    )
+    assert_equal(win_hex["value_format"], "hex", "window value_format field")
+    for sig in win_hex["signals"]:
+        for tr in sig["transitions"]:
+            assert "value" in tr, "window transition must have value"
+            if sig["signal"] == "top.data [7:0]":
+                assert "value_raw" in tr, "data transition must have value_raw"
 
     print("SMOKE_OK")
 

@@ -67,6 +67,9 @@ def wave_get_value(
         str, Field(description="Exact hierarchical signal name returned by wave_list_signals.")
     ],
     time: Annotated[int, Field(description="Raw VCD integer timestamp.")],
+    value_format: Annotated[
+        str, Field(description="Optional value display format: raw, bin, hex, uint, sint, or ascii.")
+    ] = "raw",
 ) -> dict:
     # MCP tool description (sent to LLM client via tools/list)
     """Get one signal value at a raw VCD timestamp.
@@ -74,7 +77,7 @@ def wave_get_value(
     The signal must exactly match a name returned by wave_list_signals.
     """
     try:
-        return get_value(vcd_path=vcd_path, signal=signal, time=time)
+        return get_value(vcd_path=vcd_path, signal=signal, time=time, value_format=value_format)
     except WavesQueryError as exc:
         raise _tool_error(exc) from exc
 
@@ -94,6 +97,9 @@ def wave_get_transitions(
     value: Annotated[
         str | None, Field(description="Optional filter on the resulting transition value.")
     ] = None,
+    value_format: Annotated[
+        str, Field(description="Optional value display format: raw, bin, hex, uint, sint, or ascii.")
+    ] = "raw",
 ) -> dict:
     # MCP tool description (sent to LLM client via tools/list)
     """Get recorded signal transitions in an inclusive raw VCD time range.
@@ -109,6 +115,7 @@ def wave_get_transitions(
             limit=limit,
             edge=edge,
             value=value,
+            value_format=value_format,
         )
     except WavesQueryError as exc:
         raise _tool_error(exc) from exc
@@ -138,12 +145,19 @@ def wave_get_window(
     limit_per_signal: Annotated[
         int, Field(description="Maximum transition records to return per signal.")
     ] = 50,
+    format: Annotated[
+        str, Field(description='Output format: "structured" (default) or "table".')
+    ] = "structured",
+    value_format: Annotated[
+        str, Field(description="Optional value display format: raw, bin, hex, uint, sint, or ascii.")
+    ] = "raw",
 ) -> dict:
     # MCP tool description (sent to LLM client via tools/list)
     """Get recorded transitions for multiple VCD signals in one time window.
 
     The window can be specified either by start/end timestamps or by a center time
-    with before/after offsets.
+    with before/after offsets.  Output can be structured (per-signal lists) or a
+    time-aligned table.
     """
     try:
         return get_window(
@@ -155,6 +169,8 @@ def wave_get_window(
             before=before,
             after=after,
             limit_per_signal=limit_per_signal,
+            format=format,
+            value_format=value_format,
         )
     except WavesQueryError as exc:
         raise _tool_error(exc) from exc

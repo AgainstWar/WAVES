@@ -1,5 +1,7 @@
 # WAVES — VCD Waveform Query MCP Server
 
+![WAVES Logo](logo.png)
+
 **WAVES** (Waveform Access via Explicit Signals) is a local stdio tool based on the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) for querying signal values and timing changes in VCD (Value Change Dump) waveform files.
 
 > [中文](./README.zh.md)

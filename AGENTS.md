@@ -1,8 +1,4 @@
-# WAVES Knowledge Base
-
-**Generated:** 2026-05-30
-**Commit:** fcdfd9a
-**Branch:** master
+# WAVES
 
 ## OVERVIEW
 

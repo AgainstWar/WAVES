@@ -26,14 +26,18 @@ waves
 
 通过 stdio 与 MCP 客户端通信。
 
+WAVES 提供 6 个 MCP 工具，覆盖从浏览信号到查询值和跳变的完整工作流：
+
 | 工具 | 功能 |
 |------|------|
-| `wave_get_info` | 获取 VCD 文件基本信息（timescale、时间范围、信号数） |
-| `wave_list_signals` | 列出所有信号，支持按名称过滤 |
-| `wave_get_value` | 查询信号在指定时间的值（at-or-before） |
-| `wave_get_transitions` | 查询信号在时间段内的变化，支持边沿/值过滤 |
-| `wave_get_window` | 查询多个信号在同一窗口内的变化 |
-| `wave_find_transition` | 查找指定时间之前或之后的最近变化 |
+| `wave_get_info` | 返回时间尺度、时间范围和信号总数 |
+| `wave_list_signals` | 列出信号名和位宽，支持按子字符串过滤 |
+| `wave_get_value` | 查询信号在指定时间的值（at-or-before 查找） |
+| `wave_get_transitions` | 查询信号在时间段内的所有跳变，支持按边沿或值过滤 |
+| `wave_get_window` | 查询多个信号在同一窗口内的变化（结构化或表格输出） |
+| `wave_find_transition` | 查找指定时间之前或之后的最近跳变，支持按边沿过滤 |
+
+典型工作流：先用 `wave_list_signals` 发现精确信号名，再用 `wave_get_value`、`wave_get_transitions` 或 `wave_get_window` 查询。
 
 ---
 

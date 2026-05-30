@@ -26,14 +26,18 @@ waves
 
 Communicates with MCP clients via stdio.
 
+WAVES exposes 6 MCP tools covering the workflow from browsing signals to querying values and transitions:
+
 | Tool | Function |
 |------|----------|
-| `wave_get_info` | Get VCD file basic info (timescale, time range, signal count) |
-| `wave_list_signals` | List all signals, with optional name filter |
-| `wave_get_value` | Query signal value at a given time (at-or-before) |
-| `wave_get_transitions` | Query signal transitions in a time range, with edge/value filter |
-| `wave_get_window` | Query multiple signals in the same time window |
-| `wave_find_transition` | Find the nearest transition before or after a given time |
+| `wave_get_info` | Returns timescale, time range, and total signal count |
+| `wave_list_signals` | Lists signal names and bit widths, with optional substring filter |
+| `wave_get_value` | Queries a signal value at a specific time (at-or-before lookup) |
+| `wave_get_transitions` | Queries all transitions of a signal in a time range, with optional edge or value filter |
+| `wave_get_window` | Queries multiple signals in the same time window (structured or table output) |
+| `wave_find_transition` | Finds the nearest transition before or after a given time, with optional edge filter |
+
+Typical workflow: use `wave_list_signals` to discover exact signal names, then query with `wave_get_value`, `wave_get_transitions`, or `wave_get_window`.
 
 ---
 

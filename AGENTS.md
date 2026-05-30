@@ -75,6 +75,18 @@ When adding or editing `@mcp.tool()` functions:
 - Never add persistent session state or caching
 - Never expand test framework beyond minimal smoke
 
+## ERROR MODEL
+
+All errors are raised as `WavesQueryError` (domain exceptions), which the server converts to MCP `ToolError`:
+
+| Category | When | Example |
+|----------|------|---------|
+| **VCD file error** | `vcd_path` missing, unreadable, or invalid VCD | `VCD file error: /tmp/wave.vcd. Reason: file not found.` |
+| **Signal error** | `signal` not found in the VCD | `Signal error: signal not found: tb.dut.clk.` |
+| **Parameter error** | Negative time, `limit <= 0`, invalid enum, etc. | `Parameter error: limit must be greater than 0, got 0.` |
+
+Empty results are **not** errors (e.g. no transitions in range returns `[]`, no prior value returns `null`).
+
 ## COMMANDS
 
 ```bash
@@ -99,25 +111,14 @@ Tested with Icarus Verilog generated VCD files (`tests/fixtures/sample.vcd`):
 ## DEBUGGING WITH MCP INSPECTOR
 
 ```bash
-# UI mode
 npx @modelcontextprotocol/inspector waves
-
-# CLI mode examples
-npx @modelcontextprotocol/inspector --cli waves --method tools/list
-npx @modelcontextprotocol/inspector --cli waves --method tools/call \
-  --tool-name wave_list_signals \
-  --tool-arg "vcd_path=tests/fixtures/sample.vcd"
-npx @modelcontextprotocol/inspector --cli waves --method tools/call \
-  --tool-name wave_get_value \
-  --tool-arg "vcd_path=tests/fixtures/sample.vcd" \
-  --tool-arg signal=tb_pmic_fsm.clk \
-  --tool-arg time=100000
 ```
+
+Visit `http://localhost:6274`.
 
 ## NOTES
 
 - Fixture contract: `tests/fixtures/sample.vcd` must contain `tb_pmic_fsm.clk`, `tb_pmic_fsm.rst_n`, `tb_pmic_fsm.current_state [3:0]` with exact transitions
-- `WavesVCDError` / `WavesQueryError` are the only domain exceptions; server converts to MCP `ToolError`
 - `.sisyphus/` contains planning artifacts and evidence (not shipped)
 - `.gitignore` excludes `__pycache__/` and `.egg-info/`
 - Tests use script-style assertions, not pytest

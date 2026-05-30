@@ -1,6 +1,6 @@
 # WAVES — VCD 波形查询 MCP 服务器
 
-![WAVES Logo](logo.png)
+<img src="logo.png" alt="WAVES Logo" width="120">
 
 **WAVES**（Waveform Access via Explicit Signals）是一个基于 [Model Context Protocol (MCP)](https://modelcontextprotocol.io) 的本地 stdio 工具，用于查询 VCD（Value Change Dump）波形文件中的信号值和时序变化。
 

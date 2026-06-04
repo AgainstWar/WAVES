@@ -1,9 +1,9 @@
 # GTKWave converter-based waveform parser for WAVES.
 #
-# Supports FST, LXT/LXT2, VZT, and EVCD formats by invoking the
-# corresponding GTKWave converter tools as subprocesses and piping
-# the VCD output to the existing vcd_parser.  GTKWave is an optional
-# dependency — only needed for non-VCD files.
+# Supports FST, LXT/LXT2, and VZT formats by invoking the corresponding
+# GTKWave converter tools as subprocesses and piping the VCD output to
+# the existing vcd_parser.  GTKWave is an optional dependency — only
+# needed for non-VCD files.
 
 from __future__ import annotations
 
@@ -73,7 +73,7 @@ def parse_gtkwave(path: str | Path) -> ParsedVCD:
     stderr_text = result.stderr.decode("utf-8", errors="replace").strip()
 
     # Write to temp file and parse with existing vcd parser.
-    # Some converters (lxt2vcd, vzt2vcd, evcd2vcd) exit 0 even on failure;
+    # Some converters (lxt2vcd, vzt2vcd) exit 0 even on failure;
     # parse_vcd will catch the invalid output.  If stderr has a better
     # error message, prefer that.
     with tempfile.NamedTemporaryFile(

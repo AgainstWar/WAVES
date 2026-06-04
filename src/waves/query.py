@@ -26,12 +26,12 @@ class WavesQueryError(Exception):
 
 def _load_vcd(vcd_path: str) -> ParsedVCD:
     # Parse the VCD file at vcd_path and return a ParsedVCD.
-    # Auto-detects GTKWave-supported formats (.fst, .lxt, .lxt2, .vzt, .evcd)
+    # Auto-detects GTKWave-supported formats (.fst, .lxt, .lxt2, .vzt)
     # and dispatches to the appropriate converter.
     # Raises WavesQueryError (VCD file error) on failure.
     try:
         suffix = Path(vcd_path).suffix.lower()
-        if suffix in {".fst", ".lxt", ".lxt2", ".vzt", ".evcd"}:
+        if suffix in {".fst", ".lxt", ".lxt2", ".vzt"}:
             from waves.gtkwave_parser import parse_gtkwave
             return parse_gtkwave(vcd_path)
         return parse_vcd(vcd_path)

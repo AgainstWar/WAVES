@@ -68,11 +68,15 @@ def parse_gtkwave(path: str | Path) -> ParsedVCD:
 
     if result.returncode != 0:
         stderr = result.stderr.decode("utf-8", errors="replace").strip()
-        raise WavesVCDError(f"{converter} failed: {stderr}")
+        raise WavesVCDError(f"{converter} failed: {stderr or f'exit code {result.returncode}'}")
 
     vcd_text = result.stdout.decode("utf-8", errors="replace")
+    stderr_text = result.stderr.decode("utf-8", errors="replace").strip()
 
-    # Write to temp file and parse with existing vcd parser
+    # Write to temp file and parse with existing vcd parser.
+    # Some converters (lxt2vcd, vzt2vcd, evcd2vcd) exit 0 even on failure;
+    # parse_vcd will catch the invalid output.  If stderr has a better
+    # error message, prefer that.
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".vcd", delete=False, encoding="utf-8"
     ) as f:
@@ -81,6 +85,10 @@ def parse_gtkwave(path: str | Path) -> ParsedVCD:
 
     try:
         parsed = parse_vcd(temp_path)
+    except WavesVCDError as vcd_err:
+        if stderr_text:
+            raise WavesVCDError(f"{converter} failed: {stderr_text}")
+        raise  # keep original parse_vcd error
     finally:
         Path(temp_path).unlink(missing_ok=True)
 

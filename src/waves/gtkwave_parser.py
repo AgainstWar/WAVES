@@ -19,7 +19,6 @@ _CONVERTERS: dict[str, str] = {
     ".lxt": "lxt2vcd",
     ".lxt2": "lxt2vcd",
     ".vzt": "vzt2vcd",
-    ".evcd": "evcd2vcd",
 }
 
 # All supported extensions for fast lookup.

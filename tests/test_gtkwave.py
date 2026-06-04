@@ -48,7 +48,7 @@ def assert_err(fn, substring: str, msg: str) -> None:
 
 assert_eq(
     SUPPORTED_EXTS,
-    {".fst", ".lxt", ".lxt2", ".vzt", ".evcd"},
+    {".fst", ".lxt", ".lxt2", ".vzt"},
     "supported extensions mismatch",
 )
 

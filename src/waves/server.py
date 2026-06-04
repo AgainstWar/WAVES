@@ -17,7 +17,7 @@ from waves.query import WavesQueryError, find_transition, get_info, get_transiti
 
 # FastMCP application instance (stdio transport only).
 mcp = FastMCP("WAVES")
-mcp._mcp_server.version = "0.1.2"
+mcp._mcp_server.version = "0.2.0"
 
 
 def _tool_error(exc: WavesQueryError) -> ToolError:

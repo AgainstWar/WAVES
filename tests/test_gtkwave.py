@@ -19,6 +19,8 @@ from waves.vcd_parser import WavesVCDError
 
 FST_SIMPLE = "tests/fixtures/transaction.fst"
 FST_COMPLEX = "tests/fixtures/des.fst"
+LXT2_FILE = "tests/fixtures/sample.lxt2"
+VZT_FILE = "tests/fixtures/sample.vzt"
 
 
 def assert_eq(actual: object, expected: object, msg: str) -> None:
@@ -146,5 +148,34 @@ assert_err(
 
 vcd_info = get_info("tests/fixtures/sample.vcd")
 assert_eq(vcd_info["signal_count"], 251, "VCD still works")
+
+# ====================================================================
+# LXT2 format (via lxt2vcd)
+# ====================================================================
+
+lxt2_info = get_info(LXT2_FILE)
+assert_eq(lxt2_info["signal_count"], 251, "LXT2 signal_count")
+assert_eq(lxt2_info["timescale"], "1ps", "LXT2 timescale")
+
+lxt2_sigs = list_signals(LXT2_FILE, limit=5)
+assert_eq(len(lxt2_sigs["signals"]), 5, "LXT2 list_signals")
+assert isinstance(lxt2_sigs["truncated"], bool)
+
+lxt2_val = get_value(LXT2_FILE, "tb_pmic_fsm.clk", 100000)
+assert_eq(lxt2_val["signal"], "tb_pmic_fsm.clk", "LXT2 value signal")
+
+# ====================================================================
+# VZT format (via vzt2vcd)
+# ====================================================================
+
+vzt_info = get_info(VZT_FILE)
+assert_eq(vzt_info["signal_count"], 251, "VZT signal_count")
+assert_eq(vzt_info["timescale"], "1ps", "VZT timescale")
+
+vzt_sigs = list_signals(VZT_FILE, filter="clk", limit=5)
+assert len(vzt_sigs["signals"]) > 0, "VZT must have clk signals"
+
+vzt_val = get_value(VZT_FILE, "tb_pmic_fsm.clk", 100000)
+assert_eq(vzt_val["signal"], "tb_pmic_fsm.clk", "VZT value signal")
 
 print("GTKWAVE_OK")

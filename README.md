@@ -79,17 +79,41 @@ Query transitions in a time range with edge filter:
 
 ---
 
+## Format Support
+
+WAVES natively parses **VCD** files. Additionally, it supports **FST**, **LXT2**, and **VZT** formats via GTKWave's converter tools (`fst2vcd`, `lxt2vcd`, `vzt2vcd`).
+
+```bash
+# Install GTKWave for non-VCD format support
+apt install gtkwave
+```
+
+Usage is transparent — just pass the file path to any tool:
+
+```json
+{"vcd_path": "/path/to/design.fst", "signal": "top.clk", "time": 100}
+```
+
+> If a GTKWave converter is not installed, you'll see a clear error message directing you to install `gtkwave`.
+
+---
+
 ## Debugging & Development
 
 ```
 src/waves/
-├── vcd_parser.py   # VCD parsing
-├── query.py        # Query logic
-└── server.py       # MCP server
+├── vcd_parser.py     # VCD parsing
+├── gtkwave_parser.py # FST/LXT2/VZT parsing (via GTKWave)
+├── query.py          # Query logic
+└── server.py         # MCP server
 
 tests/
-├── fixtures/sample.vcd
-└── test_smoke.py   # python tests/test_smoke.py
+├── fixtures/
+│   ├── sample.vcd    # VCD test fixture
+│   ├── des.fst       # FST test fixture
+│   └── transaction.fst # FST test fixture
+├── test_smoke.py     # python tests/test_smoke.py
+└── test_gtkwave.py   # python tests/test_gtkwave.py (requires gtkwave)
 ```
 
 Source functions use [Google Style docstrings](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html) — hover in VS Code / PyCharm to see **Args**, **Returns**, and **Example** snippets.

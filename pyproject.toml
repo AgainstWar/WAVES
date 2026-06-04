@@ -13,9 +13,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
-  "pytest",
-]
+dev = ["pytest"]
+gtkwave = []
 
 [project.scripts]
 waves = "waves.server:main"

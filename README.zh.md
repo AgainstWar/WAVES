@@ -81,7 +81,7 @@ WAVES 提供 6 个 MCP 工具，覆盖从浏览信号到查询值和跳变的完
 
 ## 格式支持
 
-WAVES 原生支持 **VCD** 文件。此外，通过 GTKWave 的转换工具（`fst2vcd`、`lxt2vcd`、`vzt2vcd`、`evcd2vcd`），还支持 **FST**、**LXT2**、**VZT** 和 **EVCD** 格式。
+WAVES 原生支持 **VCD** 文件。此外，通过 GTKWave 的转换工具（`fst2vcd`、`lxt2vcd`、`vzt2vcd`），还支持 **FST**、**LXT2** 和 **VZT** 格式。
 
 ```bash
 # 安装 GTKWave 以支持非 VCD 格式
@@ -103,7 +103,7 @@ apt install gtkwave
 ```
 src/waves/
 ├── vcd_parser.py     # VCD 解析
-├── gtkwave_parser.py # FST/LXT2/VZT/EVCD 解析（通过 GTKWave）
+├── gtkwave_parser.py # FST/LXT2/VZT 解析（通过 GTKWave）
 ├── query.py          # 查询逻辑
 └── server.py         # MCP 服务器
 

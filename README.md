@@ -81,7 +81,7 @@ Query transitions in a time range with edge filter:
 
 ## Format Support
 
-WAVES natively parses **VCD** files. Additionally, it supports **FST**, **LXT2**, **VZT**, and **EVCD** formats via GTKWave's converter tools (`fst2vcd`, `lxt2vcd`, `vzt2vcd`, `evcd2vcd`).
+WAVES natively parses **VCD** files. Additionally, it supports **FST**, **LXT2**, and **VZT** formats via GTKWave's converter tools (`fst2vcd`, `lxt2vcd`, `vzt2vcd`).
 
 ```bash
 # Install GTKWave for non-VCD format support
@@ -103,7 +103,7 @@ Usage is transparent — just pass the file path to any tool:
 ```
 src/waves/
 ├── vcd_parser.py     # VCD parsing
-├── gtkwave_parser.py # FST/LXT2/VZT/EVCD parsing (via GTKWave)
+├── gtkwave_parser.py # FST/LXT2/VZT parsing (via GTKWave)
 ├── query.py          # Query logic
 └── server.py         # MCP server
 

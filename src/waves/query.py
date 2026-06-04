@@ -12,6 +12,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from waves.vcd_parser import WavesVCDError, parse_vcd
 
 # Re-export for tests / external use
@@ -24,8 +26,14 @@ class WavesQueryError(Exception):
 
 def _load_vcd(vcd_path: str) -> ParsedVCD:
     # Parse the VCD file at vcd_path and return a ParsedVCD.
+    # Auto-detects GTKWave-supported formats (.fst, .lxt, .lxt2, .vzt, .evcd)
+    # and dispatches to the appropriate converter.
     # Raises WavesQueryError (VCD file error) on failure.
     try:
+        suffix = Path(vcd_path).suffix.lower()
+        if suffix in {".fst", ".lxt", ".lxt2", ".vzt", ".evcd"}:
+            from waves.gtkwave_parser import parse_gtkwave
+            return parse_gtkwave(vcd_path)
         return parse_vcd(vcd_path)
     except WavesVCDError as exc:
         raise WavesQueryError(

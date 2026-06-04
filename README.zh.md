@@ -79,17 +79,41 @@ WAVES 提供 6 个 MCP 工具，覆盖从浏览信号到查询值和跳变的完
 
 ---
 
+## 格式支持
+
+WAVES 原生支持 **VCD** 文件。此外，通过 GTKWave 的转换工具（`fst2vcd`、`lxt2vcd`、`vzt2vcd`、`evcd2vcd`），还支持 **FST**、**LXT2**、**VZT** 和 **EVCD** 格式。
+
+```bash
+# 安装 GTKWave 以支持非 VCD 格式
+apt install gtkwave
+```
+
+使用完全透明——只需将文件路径传递给任意工具：
+
+```json
+{"vcd_path": "/path/to/design.fst", "signal": "top.clk", "time": 100}
+```
+
+> 如果未安装对应的 GTKWave 转换器，会收到清晰的错误提示，指引您安装 `gtkwave`。
+
+---
+
 ## 调试与开发
 
 ```
 src/waves/
-├── vcd_parser.py   # VCD 解析
-├── query.py        # 查询逻辑
-└── server.py       # MCP 服务器
+├── vcd_parser.py     # VCD 解析
+├── gtkwave_parser.py # FST/LXT2/VZT/EVCD 解析（通过 GTKWave）
+├── query.py          # 查询逻辑
+└── server.py         # MCP 服务器
 
 tests/
-├── fixtures/sample.vcd
-└── test_smoke.py   # python tests/test_smoke.py
+├── fixtures/
+│   ├── sample.vcd    # VCD 测试文件
+│   ├── des.fst       # FST 测试文件
+│   └── transaction.fst # FST 测试文件
+├── test_smoke.py     # python tests/test_smoke.py
+└── test_gtkwave.py   # python tests/test_gtkwave.py（需要 gtkwave）
 ```
 
 源代码使用 [Google Style docstrings](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html) — 在 VS Code / PyCharm 中悬停即可查看 **Args**、**Returns** 和 **Example** 片段。

@@ -14,11 +14,16 @@ waves/
 ├── src/waves/
 │   ├── __init__.py
 │   ├── vcd_parser.py       # Minimal VCD parser (scalar + vector)
+│   ├── gtkwave_parser.py   # FST/LXT2/VZT/EVCD parser (via GTKWave converters)
 │   ├── query.py            # Signal lookup, value, transitions, window, find
 │   └── server.py           # FastMCP stdio server, 6 tools
 ├── tests/
-│   ├── fixtures/sample.vcd # Test waveform fixture (Icarus Verilog)
-│   └── test_smoke.py       # Minimal executable verification
+│   ├── fixtures/
+│   │   ├── sample.vcd      # Test waveform fixture (Icarus Verilog)
+│   │   ├── des.fst         # FST fixture
+│   │   └── transaction.fst # FST fixture
+│   ├── test_smoke.py       # Minimal executable verification
+│   └── test_gtkwave.py     # GTKWave converter tests
 ```
 
 ## WHERE TO LOOK

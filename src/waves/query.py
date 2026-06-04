@@ -37,7 +37,7 @@ def _load_vcd(vcd_path: str) -> ParsedVCD:
         return parse_vcd(vcd_path)
     except WavesVCDError as exc:
         raise WavesQueryError(
-            f"VCD file error: {vcd_path}. Reason: {exc}. Please provide a valid VCD file."
+            f"VCD file error: {vcd_path}. Reason: {exc}. Please provide a valid waveform file."
         ) from exc
 
 

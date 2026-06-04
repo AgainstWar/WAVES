@@ -26,23 +26,6 @@ _CONVERTERS: dict[str, str] = {
 SUPPORTED_EXTS: frozenset[str] = frozenset(_CONVERTERS.keys())
 
 
-def _check_converter(converter: str) -> None:
-    """Raise WavesVCDError if *converter* is not available on PATH."""
-    try:
-        subprocess.run(
-            [converter, "--help"],
-            capture_output=True,
-            timeout=5,
-        )
-    except FileNotFoundError:
-        raise WavesVCDError(
-            f"{converter} not found.  Install gtkwave to read this file "
-            "format: apt install gtkwave"
-        )
-    except subprocess.TimeoutExpired:
-        pass  # tool exists but hung; let the real call handle it
-
-
 def parse_gtkwave(path: str | Path) -> ParsedVCD:
     """Parse a GTKWave-supported waveform file by converting it to VCD.
 

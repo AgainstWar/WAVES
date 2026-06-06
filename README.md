@@ -34,6 +34,18 @@ After installing, add WAVES to your OpenCode config (`~/.config/opencode/opencod
 
 > Replace `/path/to/waves` with the output of `which waves`.
 
+### Codex
+
+After installing, add WAVES to your Codex config (`~/.codex/config.toml`):
+
+```toml
+[mcp_servers.waves]
+command = "/path/to/waves"
+args = []
+```
+
+> Replace `/path/to/waves` with the output of `which waves`, then restart Codex.
+
 ---
 
 ## Quick Start

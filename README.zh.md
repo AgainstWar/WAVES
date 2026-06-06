@@ -34,6 +34,18 @@ pip install .
 
 > 将 `/path/to/waves` 替换为 `which waves` 输出的路径。
 
+### Codex
+
+安装完成后，将 WAVES 添加到 Codex 配置（`~/.codex/config.toml`）：
+
+```toml
+[mcp_servers.waves]
+command = "/path/to/waves"
+args = []
+```
+
+> 将 `/path/to/waves` 替换为 `which waves` 输出的路径，然后重启 Codex。
+
 ---
 
 ## 快速使用

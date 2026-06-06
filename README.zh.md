@@ -16,6 +16,24 @@ cd WAVES
 pip install .
 ```
 
+### OpenCode
+
+安装完成后，将 WAVES 添加到 OpenCode 配置（`~/.config/opencode/opencode.json` 或项目级 `.opencode/opencode.json`）：
+
+```json
+{
+  "mcp": {
+    "waves": {
+      "type": "local",
+      "command": ["/path/to/waves"],
+      "enabled": true
+    }
+  }
+}
+```
+
+> 将 `/path/to/waves` 替换为 `which waves` 输出的路径。
+
 ---
 
 ## 快速使用

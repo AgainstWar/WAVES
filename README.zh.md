@@ -4,7 +4,11 @@
 
 **WAVES**（Waveform Access via Explicit Signals）是一个基于 [Model Context Protocol (MCP)](https://modelcontextprotocol.io) 的本地 stdio 工具，用于查询 VCD（Value Change Dump）波形文件中的信号值和时序变化。
 
-> [English](./README.md)
+<div align="center">
+
+[English](README.md) | [中文](README.zh.md)
+
+</div>
 
 ---
 

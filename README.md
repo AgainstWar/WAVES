@@ -164,4 +164,4 @@ Visit `http://localhost:6274`.
 
 ## License
 
-MIT
+This project is licensed under the [MIT License](LICENSE).
